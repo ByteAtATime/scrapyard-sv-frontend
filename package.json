@@ -42,6 +42,7 @@
 		"vitest": "^2.1.8"
 	},
 	"dependencies": {
+		"clerk-sveltekit": "https://pkg.pr.new/wobsoriano/clerk-sveltekit@2202a23f9c12424321385925ae1d66f37db2d2a6",
 		"drizzle-orm": "^0.38.4",
 		"postgres": "^3.4.5"
 	}
