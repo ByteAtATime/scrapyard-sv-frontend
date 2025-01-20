@@ -13,7 +13,7 @@ export function errorResponse(error: string | ApiError, status = 400): Response 
 	if (typeof error === 'string') {
 		return json({ success: false, error }, { status });
 	}
-	return json({ success: false, error: error.message }, { status: error.status ?? status });
+	return json({ success: false, error: error.error }, { status: error.status ?? status });
 }
 
 async function normalizeResponse(result: unknown): Promise<Response> {
@@ -62,7 +62,7 @@ export const compose = (...middlewares: MiddlewareHandler<any>[]) => {
 			} catch (e) {
 				console.error(e);
 				return errorResponse({
-					message: 'Internal server error',
+					error: 'Internal server error',
 					status: 500,
 					code: 'INTERNAL_ERROR'
 				});

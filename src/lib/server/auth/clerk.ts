@@ -63,4 +63,12 @@ export class ClerkAuthProvider implements IAuthProvider {
 
 		return user.isOrganizer ?? false;
 	}
+
+	async getUserById(id: number) {
+		const user = await db.query.usersTable.findFirst({
+			where: eq(usersTable.id, id)
+		});
+
+		return user ?? null;
+	}
 }

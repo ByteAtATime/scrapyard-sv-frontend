@@ -6,6 +6,8 @@ export class MockAuthProvider implements IAuthProvider {
 	getUserId = vi.fn();
 	isOrganizer = vi.fn();
 
+	getUserById = vi.fn();
+
 	public mockSignedIn() {
 		this.isAuthenticated.mockResolvedValue(true);
 		this.getUserId.mockResolvedValue(1);

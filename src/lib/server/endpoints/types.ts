@@ -8,7 +8,7 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface ApiError {
-	message: string;
+	error: string;
 	status?: number;
 	code?: string;
 }
@@ -21,7 +21,8 @@ export type ApiEndpointResult<T = unknown> =
 
 // Schema for runtime validation
 export const ApiErrorSchema = z.object({
-	message: z.string(),
+	success: z.literal(false),
+	error: z.string(),
 	status: z.number().optional(),
 	code: z.string().optional()
 });

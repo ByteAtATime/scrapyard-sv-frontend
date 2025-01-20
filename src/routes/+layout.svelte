@@ -4,10 +4,13 @@
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { ModeWatcher } from 'mode-watcher';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import { Toaster } from '$lib/components/ui/sonner';
+
 	let { children } = $props();
 </script>
 
 <ModeWatcher />
+<Toaster />
 
 <ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
 	<ThemeToggle />

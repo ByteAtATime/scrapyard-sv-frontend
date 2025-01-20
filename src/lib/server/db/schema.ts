@@ -8,7 +8,6 @@ export const usersTable = pgTable('users', {
 	email: text('email').notNull().unique(),
 	authProvider: authProviderEnum('auth_provider').notNull(),
 	authProviderId: text('auth_provider_id').notNull(),
-	totalPoints: integer('total_points').notNull().default(0),
 	isOrganizer: boolean('is_organizer').notNull().default(false)
 });
 

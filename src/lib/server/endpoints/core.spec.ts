@@ -23,7 +23,8 @@ describe('compose', () => {
 
 	it('should handle error objects', async () => {
 		const handler: EndpointHandler<unknown> = () => ({
-			message: 'Invalid input',
+			success: false,
+			error: 'Invalid input',
 			status: 400,
 			code: 'INVALID_INPUT'
 		});
@@ -60,7 +61,8 @@ describe('compose', () => {
 
 	it('should handle errors in middleware', async () => {
 		const middleware: MiddlewareHandler<unknown> = () => ({
-			message: 'Unauthorized',
+			success: false,
+			error: 'Unauthorized',
 			status: 401,
 			code: 'UNAUTHORIZED'
 		});
