@@ -14,6 +14,9 @@ importers:
       drizzle-orm:
         specifier: ^0.38.4
         version: 0.38.4(postgres@3.4.5)(react@18.3.1)
+      drizzle-zod:
+        specifier: ^0.6.1
+        version: 0.6.1(drizzle-orm@0.38.4(postgres@3.4.5)(react@18.3.1))(zod@3.24.1)
       lucide-svelte:
         specifier: ^0.473.0
         version: 0.473.0(svelte@5.19.0)
@@ -23,6 +26,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.5
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
     devDependencies:
       '@eslint/compat':
         specifier: ^1.2.5
@@ -1392,6 +1398,12 @@ packages:
       sqlite3:
         optional: true
 
+  drizzle-zod@0.6.1:
+    resolution: {integrity: sha512-huEbUgnsuR8tupnmLiyB2F1I2H9dswI3GfM36IbIqx9i0YUeYjRsDpJVyFVeziUvI1ogT9JHRL2Q03cC4QmvxA==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: '>=3.0.0'
+
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
@@ -2512,6 +2524,9 @@ packages:
   zimmerframe@1.1.2:
     resolution: {integrity: sha512-rAbqEGa8ovJy4pyBxZM70hg4pE6gDgaQ0Sl9M3enG3I0d6H4XSAM3GeNGLKnsBpuijUow064sf7ww1nutC5/3w==}
 
+  zod@3.24.1:
+    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -3455,6 +3470,11 @@ snapshots:
     optionalDependencies:
       postgres: 3.4.5
       react: 18.3.1
+
+  drizzle-zod@0.6.1(drizzle-orm@0.38.4(postgres@3.4.5)(react@18.3.1))(zod@3.24.1):
+    dependencies:
+      drizzle-orm: 0.38.4(postgres@3.4.5)(react@18.3.1)
+      zod: 3.24.1
 
   eastasianwidth@0.2.0: {}
 
@@ -4569,3 +4589,5 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zimmerframe@1.1.2: {}
+
+  zod@3.24.1: {}
