@@ -1,12 +1,21 @@
+import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
 
-export interface IPointsRepository {
-	getTotalPoints(userId: number): Promise<number>;
+export interface ReviewTransactionResult {
+	success: boolean;
+	error?: string;
+}
 
-	/**
-	 * Award points to a user
-	 * @param transaction - The transaction to award points for. The `userId` is the user to award points to. `id` and `createdAt` are ignored.
-	 * @returns The ID of the transaction
-	 */
+export interface ReviewTransactionOptions {
+	transactionId: number;
+	reviewerId: number;
+	status: 'approved' | 'rejected';
+	rejectionReason?: string;
+}
+
+export interface IPointsRepository {
 	awardPoints(transaction: PointTransaction): Promise<number>;
+	getPoints(userId: number): Promise<number>;
+	getTransactions(): Promise<PointTransactionData[]>;
+	reviewTransaction(options: ReviewTransactionOptions): Promise<ReviewTransactionResult>;
 }

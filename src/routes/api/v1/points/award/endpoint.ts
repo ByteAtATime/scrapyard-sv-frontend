@@ -43,16 +43,23 @@ export const endpoint_POST: EndpointHandler<{
 		};
 	}
 
-	const transaction = new PointTransaction({
-		userId,
-		amount,
-		reason,
-		authorId,
+	const transaction = new PointTransaction(
+		{
+			userId,
+			amount,
+			reason,
+			authorId,
 
-		// ignored
-		id: 0,
-		createdAt: new Date()
-	});
+			// ignored
+			id: 0,
+			createdAt: new Date(),
+			status: 'pending',
+			reviewerId: null,
+			reviewedAt: null,
+			rejectionReason: null
+		},
+		authProvider
+	);
 	await pointsRepository.awardPoints(transaction);
 
 	return { success: true };

@@ -2,6 +2,7 @@ import type { RequestEvent, RequestHandler } from '@sveltejs/kit';
 import type { EndpointHandler, MiddlewareHandler, ApiError } from './types';
 import { isApiError, isApiResponse } from './types';
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 
 type ComposedHandler<TDeps> = (deps: TDeps, event: RequestEvent) => Response | Promise<Response>;
 
@@ -26,7 +27,8 @@ async function normalizeResponse(result: unknown): Promise<Response> {
 		const cloned = result.clone();
 		const parsed = await cloned.json();
 		if (!isApiResponse(parsed)) {
-			throw new Error('Response must follow ApiResponse format');
+			const details = dev ? `\n\nGot: ${JSON.stringify(parsed, null, 2)}` : '';
+			throw new Error('Response must follow ApiResponse format' + details);
 		}
 
 		return result;
