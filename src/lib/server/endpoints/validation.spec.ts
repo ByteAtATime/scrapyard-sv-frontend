@@ -38,7 +38,7 @@ describe('withBodySchema', () => {
 			})
 		} as any;
 
-		const response = await middleware({}, event, next);
+		const response = (await middleware({}, event, next)) as any;
 		const data = await response.json();
 
 		expect(response.status).toBe(400);
@@ -61,7 +61,7 @@ describe('withBodySchema', () => {
 			})
 		} as any;
 
-		const response = await middleware({}, event, next);
+		const response = (await middleware({}, event, next)) as any;
 		const data = await response.json();
 
 		expect(response.status).toBe(400);
