@@ -119,7 +119,7 @@ describe('withQuerySchema', () => {
 
 	it('should pass valid query parameters to next handler', async () => {
 		const middleware = withQuerySchema(schema);
-		const next = vi.fn().mockResolvedValue(new Response());
+		const next = vi.fn<() => Response>().mockResolvedValue(new Response());
 
 		const event = {
 			request: new Request('http://test.com?page=1&limit=10')
@@ -140,7 +140,7 @@ describe('withQuerySchema', () => {
 			request: new Request('http://test.com?page=-1&limit=invalid')
 		} as any;
 
-		const response = await middleware({}, event, next);
+		const response = (await middleware({}, event, next)) as any;
 		const data = await response.json();
 
 		expect(response.status).toBe(400);
@@ -159,7 +159,7 @@ describe('withQuerySchema', () => {
 			request: new Request('http://test.com?page=1')
 		} as any;
 
-		const response = await middleware({}, event, next);
+		const response = (await middleware({}, event, next)) as any;
 		const data = await response.json();
 
 		expect(response.status).toBe(400);
