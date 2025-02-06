@@ -40,7 +40,7 @@ export class User {
 			throw new Error('User not authenticated');
 		}
 
-		this._totalPoints = await this.pointsRepository.getTotalPoints(id);
+		this._totalPoints = await this.pointsRepository.getPoints(id);
 		return this._totalPoints;
 	}
 }
