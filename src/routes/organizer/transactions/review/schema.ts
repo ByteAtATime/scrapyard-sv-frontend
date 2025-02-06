@@ -9,3 +9,7 @@ export const rejectSchema = z.object({
 	id: selectPointTransactionSchema.shape.id,
 	reason: z.string().nonempty()
 });
+
+export const deleteSchema = z.object({
+	id: selectPointTransactionSchema.shape.id
+});

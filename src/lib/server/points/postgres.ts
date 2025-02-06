@@ -124,7 +124,14 @@ export class PostgresPointsRepository implements IPointsRepository {
 			};
 		}
 
-		if (transaction.status !== 'pending') {
+		if (options.status === 'deleted' && transaction.status === 'deleted') {
+			return {
+				success: false,
+				error: 'Transaction has already been deleted'
+			};
+		}
+
+		if (transaction.status !== 'pending' && options.status !== 'deleted') {
 			return {
 				success: false,
 				error: 'Transaction has already been reviewed'

@@ -9,7 +9,7 @@ export interface ReviewTransactionResult {
 export interface ReviewTransactionOptions {
 	transactionId: number;
 	reviewerId: number;
-	status: 'approved' | 'rejected';
+	status: 'approved' | 'rejected' | 'deleted';
 	rejectionReason?: string;
 }
 

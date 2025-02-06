@@ -2,7 +2,7 @@ import { superValidate } from 'sveltekit-superforms/server';
 import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { zod } from 'sveltekit-superforms/adapters';
-import { approveSchema, rejectSchema } from './schema';
+import { approveSchema, rejectSchema, deleteSchema } from './schema';
 import { pointTransactionJsonSchema } from '$lib/server/points/transaction';
 import { z } from 'zod';
 
@@ -14,11 +14,13 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 	const approveForm = await superValidate(zod(approveSchema));
 	const rejectForm = await superValidate(zod(rejectSchema));
+	const deleteForm = await superValidate(zod(deleteSchema));
 
 	return {
 		transactions: transactions.data,
 		approveForm,
-		rejectForm
+		rejectForm,
+		deleteForm
 	};
 };
 
@@ -99,6 +101,42 @@ export const actions: Actions = {
 			console.error(e);
 			const description = e instanceof Error ? e.message : undefined;
 
+			return fail(500, {
+				form,
+				error: 'An unexpected error occurred. Please try again.',
+				description
+			});
+		}
+	},
+	delete: async ({ request, fetch }) => {
+		const form = await superValidate(request, zod(deleteSchema));
+
+		if (!form.valid) {
+			return fail(400, { form });
+		}
+
+		try {
+			const response = await fetch('/api/v1/points/transactions/review', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'delete',
+					transactionId: form.data.id,
+					status: 'deleted'
+				})
+			});
+			const data = await response.json();
+			if (!response.ok || !data.success) {
+				return fail(response.status, {
+					form,
+					error: 'Failed to delete transaction. Please try again.',
+					description: data.error
+				});
+			}
+			return { form };
+		} catch (e) {
+			console.error(e);
+			const description = e instanceof Error ? e.message : undefined;
 			return fail(500, {
 				form,
 				error: 'An unexpected error occurred. Please try again.',

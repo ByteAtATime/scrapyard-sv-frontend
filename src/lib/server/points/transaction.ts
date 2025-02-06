@@ -9,7 +9,7 @@ export const pointTransactionJsonSchema = z.object({
 	reason: z.string(),
 	authorId: z.number(),
 	createdAt: z.coerce.date(),
-	status: z.enum(['pending', 'approved', 'rejected']),
+	status: z.enum(['pending', 'approved', 'rejected', 'deleted']),
 	reviewerId: z.number().nullable().default(null),
 	reviewedAt: z.coerce.date().nullable().default(null),
 	rejectionReason: z.string().nullable().default(null),

@@ -5,7 +5,8 @@ export const authProviderEnum = pgEnum('auth_provider', ['clerk']);
 export const transactionStatusEnum = pgEnum('transaction_status', [
 	'pending',
 	'approved',
-	'rejected'
+	'rejected',
+	'deleted'
 ]);
 
 export const usersTable = pgTable('users', {

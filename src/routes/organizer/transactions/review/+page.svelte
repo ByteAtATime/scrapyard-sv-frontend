@@ -54,6 +54,18 @@
 		}
 	});
 
+	const { enhance: deleteEnhance, formId: deleteFormId } = superForm(data.deleteForm, {
+		onResult: ({ result }) => {
+			if (result.type === 'success') {
+				toast.success('Transaction deleted successfully!');
+			} else if (result.type === 'failure') {
+				toast.error(result.data?.error ?? 'Failed to delete transaction', {
+					description: result.data?.description
+				});
+			}
+		}
+	});
+
 	let showRejectDialog = $state(false);
 
 	function handleReject(transaction: PointTransactionData) {
@@ -67,7 +79,7 @@
 	<Card>
 		<CardHeader>
 			<CardTitle>Review Transactions</CardTitle>
-			<CardDescription>Review and approve/reject point transactions</CardDescription>
+			<CardDescription>Review and approve/reject/delete point transactions</CardDescription>
 		</CardHeader>
 		<CardContent>
 			<Table>
@@ -93,12 +105,13 @@
 							<TableCell>
 								<StatusBadge
 									status={transaction.status}
+									reviewer={transaction.reviewer}
 									rejectionReason={transaction.rejectionReason}
 								/>
 							</TableCell>
 							<TableCell>
-								{#if transaction.status === 'pending'}
-									<div class="flex gap-2">
+								<div class="flex gap-2">
+									{#if transaction.status === 'pending'}
 										<form action="?/approve" method="POST" use:approveEnhance>
 											<input type="hidden" name="__superform_id" bind:value={transaction.id} />
 											<input type="hidden" name="id" bind:value={transaction.id} />
@@ -120,12 +133,21 @@
 										>
 											Reject
 										</Button>
-									</div>
-								{:else if transaction.reviewer}
-									<span class="text-sm text-gray-500">
-										Reviewed by {transaction.reviewer.name}
-									</span>
-								{/if}
+									{/if}
+									<form action="?/delete" method="POST" use:deleteEnhance>
+										<input type="hidden" name="__superform_id" bind:value={transaction.id} />
+										<input type="hidden" name="id" bind:value={transaction.id} />
+										<Button
+											variant="outline"
+											size="sm"
+											class="bg-gray-500 text-white hover:bg-gray-600"
+											type="submit"
+											onclick={() => ($deleteFormId = transaction.id.toString())}
+										>
+											Delete
+										</Button>
+									</form>
+								</div>
 							</TableCell>
 						</TableRow>
 					{/each}
