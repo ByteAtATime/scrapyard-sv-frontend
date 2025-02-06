@@ -11,14 +11,18 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import type { SuperForm, SuperFormData, SuperFormErrors } from 'sveltekit-superforms/client';
+	import type { Infer } from 'sveltekit-superforms';
+	import type { rejectSchema } from '../schema';
+
+	type Schema = Infer<typeof rejectSchema>;
 
 	type Props = {
 		open?: boolean;
 		onClose: () => void;
-		form: SuperFormData<{ reason: string; id: number }>;
+		form: SuperFormData<Schema>;
 		formId: string;
-		enhance: SuperForm<{ reason: string; id: number }>['enhance'];
-		errors: SuperFormErrors<{ reason: string; id: number }>;
+		enhance: SuperForm<Schema>['enhance'];
+		errors: SuperFormErrors<Schema>;
 		submitting: boolean;
 	};
 
