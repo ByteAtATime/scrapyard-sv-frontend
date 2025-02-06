@@ -10,15 +10,14 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
-	import type { SuperFormData, SuperFormErrors } from 'sveltekit-superforms/client';
-	import type { enhance as kitEnhance } from '$app/forms';
+	import type { SuperForm, SuperFormData, SuperFormErrors } from 'sveltekit-superforms/client';
 
 	type Props = {
 		open?: boolean;
 		onClose: () => void;
 		form: SuperFormData<{ reason: string; id: number }>;
 		formId: string;
-		enhance: typeof kitEnhance;
+		enhance: SuperForm<{ reason: string; id: number }>['enhance'];
 		errors: SuperFormErrors<{ reason: string; id: number }>;
 		submitting: boolean;
 	};
