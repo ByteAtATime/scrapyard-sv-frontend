@@ -53,10 +53,10 @@
 					bind:value={$form.reason}
 					placeholder="Why are you rejecting this transaction?"
 					rows={3}
-					aria-invalid={errors.reason ? 'true' : undefined}
+					aria-invalid={$errors.reason ? 'true' : undefined}
 				/>
-				{#if errors.reason}
-					<p class="text-sm text-destructive">{errors.reason}</p>
+				{#if $errors.reason}
+					<p class="text-sm text-destructive">{$errors.reason}</p>
 				{/if}
 			</div>
 
