@@ -15,8 +15,5 @@ export const endpoint_GET: EndpointHandler<{
 
 	const transactions = await pointsRepository.getTransactions();
 
-	return {
-		success: true,
-		data: transactions
-	};
+	return transactions;
 };
