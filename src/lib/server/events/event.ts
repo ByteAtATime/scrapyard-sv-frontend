@@ -8,6 +8,7 @@ export const eventJsonSchema = z.object({
 	name: z.string(),
 	description: z.string(),
 	attendancePoints: z.number(),
+	time: z.coerce.date(),
 	contactOrganizer: userJsonSchema.nullable()
 });
 export type EventJson = z.infer<typeof eventJsonSchema>;
@@ -52,6 +53,7 @@ export class Event {
 			id: this.id,
 			name: this.name,
 			description: this.description,
+			time: this.time,
 			attendancePoints: this.attendancePoints,
 			contactOrganizer: await this.getContactOrganizer()
 		});
