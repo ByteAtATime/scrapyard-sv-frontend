@@ -34,6 +34,10 @@ export class Event {
 		return this.data.attendancePoints;
 	}
 
+	public get time(): Date {
+		return this.data.time;
+	}
+
 	public async getContactOrganizer(): Promise<User | null> {
 		if (!this.data.contactOrganizerId) return null;
 

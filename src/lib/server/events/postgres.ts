@@ -3,10 +3,20 @@ import { db } from '../db';
 import type { EventData, EventAttendanceData } from '../db/types';
 import type { IEventsRepository } from './types';
 import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
+import type { Event } from './event';
 
 export class PostgresEventsRepository implements IEventsRepository {
-	async createEvent(event: Omit<EventData, 'id'>): Promise<number> {
-		const result = await db.insert(eventsTable).values(event).returning({ id: eventsTable.id });
+	async createEvent(event: Event): Promise<number> {
+		const result = await db
+			.insert(eventsTable)
+			.values({
+				name: event.name,
+				description: event.description,
+				time: event.time,
+				attendancePoints: event.attendancePoints,
+				contactOrganizerId: (await event.getContactOrganizer())?.id
+			})
+			.returning({ id: eventsTable.id });
 
 		return result[0].id;
 	}

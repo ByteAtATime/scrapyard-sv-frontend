@@ -40,6 +40,7 @@ export const eventsTable = pgTable('events', {
 	id: serial('id').primaryKey(),
 	name: text('title').notNull(),
 	description: text('description').notNull(),
+	time: timestamp('time').notNull(),
 	/** number of points obtained by attending the event */
 	attendancePoints: integer('attendance_points').notNull(),
 	/** organizer to contact in case of questions */

@@ -1,5 +1,7 @@
 import { ClerkAuthProvider } from '../auth/clerk';
 import type { IAuthProvider } from '../auth/types';
+import { PostgresEventsRepository } from '../events/postgres';
+import type { IEventsRepository } from '../events/types';
 import { PostgresPointsRepository } from '../points/postgres';
 import type { IPointsRepository } from '../points/types';
 import type { MiddlewareHandler } from './types';
@@ -19,5 +21,14 @@ export const withPointsRepository = <
 	return async (deps, event, next) => {
 		const pointsRepository = new PostgresPointsRepository();
 		return next({ ...deps, pointsRepository } as unknown as TDeps);
+	};
+};
+
+export const withEventsRepository = <
+	TDeps extends { eventsRepository: IEventsRepository }
+>(): MiddlewareHandler<Omit<TDeps, 'eventsRepository'>> => {
+	return async (deps, event, next) => {
+		const eventsRepository = new PostgresEventsRepository();
+		return next({ ...deps, eventsRepository } as unknown as TDeps);
 	};
 };
