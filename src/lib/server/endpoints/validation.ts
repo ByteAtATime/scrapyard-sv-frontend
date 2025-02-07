@@ -40,7 +40,7 @@ export const withBodySchema = <TDeps extends { body: z.infer<TSchema> }, TSchema
 
 export const withRouteParams = <
 	TParams extends Record<string, string>,
-	TDeps extends { params: Partial<TParams> }
+	TDeps extends { params: Partial<TParams> } = { params: Partial<TParams> }
 >(): MiddlewareHandler<Omit<TDeps, 'params'>> => {
 	return async (deps, event, next) => {
 		const params = event.params as Partial<TParams>;
