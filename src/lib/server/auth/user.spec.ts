@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { User } from './user';
+import { CurrentUser } from './user';
 import { MockAuthProvider } from './mock';
 import { MockPointsRepository } from '../points/mock';
 
@@ -18,7 +18,7 @@ describe('User', () => {
 		it('should return cached user ID if available', async () => {
 			mockAuthProvider.getUserId.mockResolvedValue(2);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 			user['_id'] = 1;
 
 			const userId = await user.getUserId();
@@ -29,7 +29,7 @@ describe('User', () => {
 		it('should fetch and cache user ID if not available', async () => {
 			mockAuthProvider.getUserId.mockResolvedValue(2);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 
 			const userId = await user.getUserId();
 			expect(userId).toBe(2);
@@ -42,7 +42,7 @@ describe('User', () => {
 		it('should return cached organizer status if available', async () => {
 			mockAuthProvider.isOrganizer.mockResolvedValue(false);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 			user['_isOrganizer'] = true;
 
 			const isOrganizer = await user.getIsOrganizer();
@@ -53,7 +53,7 @@ describe('User', () => {
 		it('should fetch and cache organizer status if not available', async () => {
 			mockAuthProvider.isOrganizer.mockResolvedValue(false);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 
 			const isOrganizer = await user.getIsOrganizer();
 			expect(isOrganizer).toBe(false);
@@ -66,7 +66,7 @@ describe('User', () => {
 		it('should return cached total points if available', async () => {
 			mockPointsRepository.getPoints.mockResolvedValue(101);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 			user['_totalPoints'] = 100;
 
 			const totalPoints = await user.getTotalPoints();
@@ -78,7 +78,7 @@ describe('User', () => {
 			mockAuthProvider.getUserId.mockResolvedValue(3);
 			mockPointsRepository.getPoints.mockResolvedValue(200);
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 
 			const totalPoints = await user.getTotalPoints();
 			expect(totalPoints).toBe(200);
@@ -89,7 +89,7 @@ describe('User', () => {
 		it('should throw an error if user is not authenticated', async () => {
 			mockAuthProvider.mockSignedOut();
 
-			const user = new User(mockAuthProvider, mockPointsRepository);
+			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 
 			await expect(user.getTotalPoints()).rejects.toThrow('User not authenticated');
 		});

@@ -1,5 +1,5 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { pointTransactionsTable, usersTable } from './schema';
+import { eventAttendanceTable, eventsTable, pointTransactionsTable, usersTable } from './schema';
 import type { z } from 'zod';
 
 export const selectPointTransactionSchema = createSelectSchema(pointTransactionsTable);
@@ -9,3 +9,11 @@ export type PointTransactionData = z.infer<typeof selectPointTransactionSchema>;
 export const selectUserSchema = createSelectSchema(usersTable);
 export const insertUserSchema = createInsertSchema(usersTable);
 export type UserData = z.infer<typeof selectUserSchema>;
+
+export const selectEventSchema = createSelectSchema(eventsTable);
+export const insertEventSchema = createInsertSchema(eventsTable);
+export type EventData = z.infer<typeof selectEventSchema>;
+
+export const selectEventAttendanceSchema = createSelectSchema(eventAttendanceTable);
+export const insertEventAttendanceSchema = createInsertSchema(eventsTable);
+export type EventAttendanceData = z.infer<typeof selectEventAttendanceSchema>;

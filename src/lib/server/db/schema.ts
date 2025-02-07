@@ -35,3 +35,29 @@ export const pointTransactionsTable = pgTable('point_transactions', {
 	reviewedAt: timestamp('reviewed_at'),
 	rejectionReason: text('rejection_reason')
 });
+
+export const eventsTable = pgTable('events', {
+	id: serial('id').primaryKey(),
+	name: text('title').notNull(),
+	description: text('description').notNull(),
+	/** number of points obtained by attending the event */
+	attendancePoints: integer('attendance_points').notNull(),
+	/** organizer to contact in case of questions */
+	contactOrganizerId: integer('contact_organizer_id').references(() => usersTable.id)
+});
+
+export const eventAttendanceTable = pgTable('event_attendance', {
+	eventId: integer('event_id')
+		.references(() => eventsTable.id)
+		.notNull(),
+	userId: integer('user_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	checkInTime: timestamp('check_in_time').defaultNow().notNull(),
+	checkedInBy: integer('checked_in_by')
+		.references(() => usersTable.id)
+		.notNull(),
+	awardPointsTransactionId: integer('award_points_transaction_id').references(
+		() => pointTransactionsTable.id
+	)
+});
