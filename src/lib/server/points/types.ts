@@ -15,7 +15,7 @@ export interface ReviewTransactionOptions {
 
 export interface IPointsRepository {
 	awardPoints(transaction: PointTransaction): Promise<number>;
-	getPoints(userId: number): Promise<number>;
+	getTotalPoints(userId: number): Promise<number>;
 	getTransactions(): Promise<PointTransactionData[]>;
 	reviewTransaction(options: ReviewTransactionOptions): Promise<ReviewTransactionResult>;
 }

@@ -7,7 +7,7 @@ import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
 
 export class PostgresPointsRepository implements IPointsRepository {
-	async getPoints(userId: number): Promise<number> {
+	async getTotalPoints(userId: number): Promise<number> {
 		const result = await db
 			.select({
 				totalPoints: sum(pointTransactionsTable.amount).mapWith(Number)

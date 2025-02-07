@@ -12,9 +12,7 @@ const mockOrganizer = {
 	isOrganizer: true,
 	authProvider: 'clerk',
 	authProviderId: 'zrl123',
-	totalPoints: -1,
-	// @ts-expect-error - todo: wtf
-	points: -1
+	totalPoints: -1
 } satisfies UserData;
 const mockEventData = {
 	id: 1,

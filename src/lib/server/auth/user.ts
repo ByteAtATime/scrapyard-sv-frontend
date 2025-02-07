@@ -7,7 +7,7 @@ export const userJsonSchema = z.object({
 	id: z.number(),
 	name: z.string(),
 	email: z.string(),
-	points: z.number(),
+	totalPoints: z.number(),
 	isOrganizer: z.boolean()
 });
 export type UserJson = z.infer<typeof userJsonSchema>;
@@ -30,7 +30,7 @@ export class User {
 		return this.data.email;
 	}
 
-	public get points(): number {
+	public get totalPoints(): number {
 		return this.data.totalPoints;
 	}
 
@@ -43,7 +43,7 @@ export class User {
 			id: this.id,
 			name: this.name,
 			email: this.email,
-			points: this.points,
+			totalPoints: this.totalPoints,
 			isOrganizer: this.isOrganizer
 		});
 	}
@@ -88,7 +88,7 @@ export class CurrentUser {
 			throw new Error('User not authenticated');
 		}
 
-		this._totalPoints = await this.pointsRepository.getPoints(id);
+		this._totalPoints = await this.pointsRepository.getTotalPoints(id);
 		return this._totalPoints;
 	}
 }

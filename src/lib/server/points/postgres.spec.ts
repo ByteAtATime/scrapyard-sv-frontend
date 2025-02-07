@@ -30,7 +30,7 @@ describe('PostgresPointsRepository', () => {
 			mockDb.where.mockResolvedValue([{ totalPoints: expectedPoints }]);
 
 			const repo = new PostgresPointsRepository();
-			const points = await repo.getPoints(userId);
+			const points = await repo.getTotalPoints(userId);
 
 			expect(points).toBe(expectedPoints);
 			expect(mockDb.where).toHaveBeenCalled();
@@ -42,7 +42,7 @@ describe('PostgresPointsRepository', () => {
 
 			const repo = new PostgresPointsRepository();
 
-			await expect(repo.getPoints(userId)).rejects.toThrow('User not found');
+			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
 		});
 
 		it('should throw an error if totalPoints is not found', async () => {
@@ -51,7 +51,7 @@ describe('PostgresPointsRepository', () => {
 
 			const repo = new PostgresPointsRepository();
 
-			await expect(repo.getPoints(userId)).rejects.toThrow('User not found');
+			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
 		});
 	});
 

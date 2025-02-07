@@ -64,25 +64,25 @@ describe('User', () => {
 
 	describe('getTotalPoints', () => {
 		it('should return cached total points if available', async () => {
-			mockPointsRepository.getPoints.mockResolvedValue(101);
+			mockPointsRepository.getTotalPoints.mockResolvedValue(101);
 
 			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 			user['_totalPoints'] = 100;
 
 			const totalPoints = await user.getTotalPoints();
 			expect(totalPoints).toBe(100);
-			expect(mockPointsRepository.getPoints).not.toHaveBeenCalled();
+			expect(mockPointsRepository.getTotalPoints).not.toHaveBeenCalled();
 		});
 
 		it('should fetch and cache total points if not available', async () => {
 			mockAuthProvider.getUserId.mockResolvedValue(3);
-			mockPointsRepository.getPoints.mockResolvedValue(200);
+			mockPointsRepository.getTotalPoints.mockResolvedValue(200);
 
 			const user = new CurrentUser(mockAuthProvider, mockPointsRepository);
 
 			const totalPoints = await user.getTotalPoints();
 			expect(totalPoints).toBe(200);
-			expect(mockPointsRepository.getPoints).toHaveBeenCalledWith(3);
+			expect(mockPointsRepository.getTotalPoints).toHaveBeenCalledWith(3);
 			expect(user['_totalPoints']).toBe(200);
 		});
 
