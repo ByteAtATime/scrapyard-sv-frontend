@@ -66,6 +66,7 @@ describe('withBodySchema', () => {
 
 		expect(response.status).toBe(400);
 		expect(data).toEqual({
+			success: false,
 			error: 'Validation failed',
 			errors: expect.any(Array)
 		});

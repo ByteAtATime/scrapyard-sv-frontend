@@ -21,7 +21,7 @@ export const endpoint_GET: EndpointHandler<{
 export const postSchema = z.object({
 	name: z.string(),
 	description: z.string(),
-	time: z.date(),
+	time: z.coerce.date(),
 	attendancePoints: z.number(),
 	contactOrganizerId: z.number().nullable()
 });

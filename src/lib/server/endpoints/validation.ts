@@ -24,6 +24,7 @@ export const withBodySchema = <TDeps extends { body: z.infer<TSchema> }, TSchema
 			if (e instanceof z.ZodError) {
 				return json(
 					{
+						success: false,
 						error: 'Validation failed',
 						errors: e.errors.map((err) => ({
 							path: err.path.join('.'),
