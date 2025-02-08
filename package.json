@@ -28,7 +28,7 @@
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
 		"autoprefixer": "^10.4.20",
-		"bits-ui": "1.0.0-next.78",
+		"bits-ui": "1.0.0-next.90",
 		"clsx": "^2.1.1",
 		"drizzle-kit": "^0.30.2",
 		"eslint": "^9.18.0",
@@ -57,7 +57,7 @@
 	"dependencies": {
 		"clerk-sveltekit": "https://pkg.pr.new/wobsoriano/clerk-sveltekit@2202a23f9c12424321385925ae1d66f37db2d2a6",
 		"drizzle-orm": "^0.38.4",
-		"drizzle-zod": "^0.6.1",
+		"drizzle-zod": "^0.5.1",
 		"postgres": "^3.4.5",
 		"sveltekit-superforms": "^2.22.1",
 		"zod": "^3.24.1"
