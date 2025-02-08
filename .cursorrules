@@ -45,8 +45,8 @@ Svelte 5 introduces a new reactivity system based on **runes**. These are specia
 
 - **`let { prop1, prop2, ... } = $props()`:** Replaces `export let prop1; export let prop2;` for declaring component props. Destructuring is used.
   ```diff
-  - export let message; // Svelte 4 - export let for props
-  + let { message } = $props(); // Svelte 5 - $props for props
+  - export let message: string; // Svelte 4 - export let for props
+  + let { message }: { message: string } = $props(); // Svelte 5 - $props for props
   ```
   **To declare component props, use `let { prop1, prop2, ... } = $props();` instead of `export let`.** Fallback values are still supported in destructuring: `let { prop = 'default' } = $props();`
 

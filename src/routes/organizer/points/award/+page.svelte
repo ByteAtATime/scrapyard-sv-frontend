@@ -14,6 +14,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { toast } from 'svelte-sonner';
 	import SuperDebug from 'sveltekit-superforms';
+	import UserSelect from '$lib/components/user-select/UserSelect.svelte';
 
 	const { data } = $props();
 
@@ -43,18 +44,8 @@
 		<CardContent>
 			<form method="POST" use:enhance class="space-y-6">
 				<div class="space-y-2">
-					<Label for="userId">User ID</Label>
-					<Input
-						type="number"
-						id="userId"
-						name="userId"
-						bind:value={$form.userId}
-						aria-invalid={$errors.userId ? 'true' : undefined}
-						aria-describedby="userId-error"
-					/>
-					{#if $errors.userId}
-						<p id="userId-error" class="text-sm text-destructive">{$errors.userId}</p>
-					{/if}
+					<Label for="userId">User</Label>
+					<UserSelect bind:value={$form.userId} error={$errors.userId?.[0]} />
 				</div>
 
 				<div class="space-y-2">
