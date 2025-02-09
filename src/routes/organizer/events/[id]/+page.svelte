@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { superForm } from 'sveltekit-superforms/client';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		Card,
@@ -16,10 +15,11 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import { formatDate } from '$lib/utils/date';
+	import RapidCheckIn from './_components/RapidCheckIn.svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	const { data } = $props<{
 		event: {
@@ -37,26 +37,49 @@
 		}>;
 	}>();
 
-	const { form, errors, enhance, submitting } = superForm(
-		{
-			userId: ''
-		},
-		{
-			onResult: ({ result }) => {
-				if (result.type === 'success') {
-					toast.success('User checked in successfully!');
-				} else if (result.type === 'error') {
-					toast.error('Failed to check in user', {
-						description: result.error?.message ?? 'Please try again later'
-					});
+	async function handleCheckIn(userId: number) {
+		try {
+			const response = await fetch(`/api/v1/events/${data.event.id}/check-in`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ userId })
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				if (response.status === 400) {
+					throw new Error(result.error ?? 'Invalid request');
+				} else if (response.status === 404) {
+					throw new Error(result.error ?? 'User or event not found');
+				} else if (response.status === 401) {
+					throw new Error(result.error ?? 'You are not authorized to check in users');
 				} else {
-					toast.error('Failed to check in user', {
-						description: 'Please try again later'
-					});
+					throw new Error(result.error ?? 'Failed to check in user');
 				}
 			}
+
+			toast.success('Check-in successful', {
+				description: 'User has been checked in to the event'
+			});
+			await invalidateAll();
+			return true;
+		} catch (error) {
+			console.error('Error checking in user:', error);
+			if (error instanceof Error) {
+				toast.error('Check-in failed', {
+					description: error.message
+				});
+			} else {
+				toast.error('Failed to check in user', {
+					description: 'An unexpected error occurred'
+				});
+			}
+			return false;
 		}
-	);
+	}
 </script>
 
 <div class="container mx-auto space-y-6 p-4">
@@ -90,31 +113,10 @@
 		<Card>
 			<CardHeader>
 				<CardTitle>Check In User</CardTitle>
-				<CardDescription>Record attendance for this event</CardDescription>
+				<CardDescription>Scan barcode or enter user ID to check in</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<form method="POST" use:enhance class="space-y-4">
-					<div class="space-y-2">
-						<Label for="userId">User ID</Label>
-						<Input
-							autofocus
-							type="text"
-							id="userId"
-							name="userId"
-							bind:value={$form.userId}
-							placeholder="Enter user ID"
-							aria-invalid={$errors.userId ? 'true' : undefined}
-							aria-describedby="userId-error"
-						/>
-						{#if $errors.userId}
-							<p id="userId-error" class="text-sm text-destructive">{$errors.userId}</p>
-						{/if}
-					</div>
-
-					<Button type="submit" class="w-full" disabled={$submitting}>
-						{$submitting ? 'Checking In...' : 'Check In User'}
-					</Button>
-				</form>
+				<RapidCheckIn onCheckIn={handleCheckIn} />
 			</CardContent>
 		</Card>
 	</div>

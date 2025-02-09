@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
@@ -7,7 +7,7 @@ import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 import { zod } from 'sveltekit-superforms/adapters';
 
 const checkInSchema = z.object({
-	userId: z.string().min(1, 'User ID is required')
+	userId: z.number().gt(0, 'User ID is required')
 });
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -58,20 +58,20 @@ export const actions: Actions = {
 			throw error(403, 'Only organizers can check in users');
 		}
 
+		const form = await superValidate(request, zod(checkInSchema));
+
 		const eventId = parseInt(params.id);
 		if (isNaN(eventId)) {
-			throw error(400, 'Invalid event ID');
+			return fail(400, { form, errors: { userId: ['Invalid event ID'] } });
 		}
 
-		const form = await superValidate(request, zod(checkInSchema));
 		if (!form.valid) {
-			return { form };
+			return fail(400, { form });
 		}
 
-		const userId = parseInt(form.data.userId);
-		if (isNaN(userId)) {
+		if (isNaN(form.data.userId)) {
 			form.errors.userId = ['Invalid user ID'];
-			return { form };
+			return fail(400, { form });
 		}
 
 		const eventsRepository = new PostgresEventsRepository();
@@ -79,17 +79,17 @@ export const actions: Actions = {
 		try {
 			const organizerId = await authProvider.getUserId();
 			if (!organizerId) {
-				throw error(401, 'Unauthorized');
+				return fail(401, { form });
 			}
-			await eventsRepository.checkInUser(eventId, userId, organizerId);
+			await eventsRepository.checkInUser(eventId, form.data.userId, organizerId);
 			return { form };
 		} catch (e) {
-			return {
+			return fail(400, {
 				form,
 				error: {
 					message: e instanceof Error ? e.message : 'Failed to check in user'
 				}
-			};
+			});
 		}
 	}
 };
