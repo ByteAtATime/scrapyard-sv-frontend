@@ -16,6 +16,22 @@ export const endpoint_POST: EndpointHandler<{
 	body: z.infer<typeof postSchema>;
 	params: { id: string };
 }> = async ({ authProvider, body, params, eventsRepository }) => {
+	if (!(await authProvider.isOrganizer())) {
+		return {
+			success: false,
+			error: 'Unauthorized'
+		};
+	}
+
+	const authorId = await authProvider.getUserId();
+
+	if (!authorId) {
+		return {
+			success: false,
+			error: 'Unauthorized'
+		};
+	}
+
 	const eventId = parseInt(params.id);
 	if (isNaN(eventId)) {
 		return {
@@ -36,14 +52,6 @@ export const endpoint_POST: EndpointHandler<{
 		return {
 			success: false,
 			error: 'User is already checked in'
-		};
-	}
-
-	const authorId = await authProvider.getUserId();
-	if (!authorId) {
-		return {
-			success: false,
-			error: 'Unauthorized'
 		};
 	}
 
