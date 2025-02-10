@@ -85,10 +85,12 @@
 	{:else}
 		<Dialog.Root bind:open>
 			<Dialog.Trigger class="w-full">
-				<Button variant="outline" class="w-full justify-start">
-					<Search class="mr-2 h-4 w-4" />
-					Select User
-				</Button>
+				{#snippet child({ props })}
+					<Button {...props} variant="outline" class="w-full justify-start">
+						<Search class="mr-2 h-4 w-4" />
+						Select User
+					</Button>
+				{/snippet}
 			</Dialog.Trigger>
 			<Dialog.Content class="sm:max-w-[425px]">
 				<Dialog.Header>
