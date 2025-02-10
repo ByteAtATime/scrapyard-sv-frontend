@@ -1,20 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ClerkAuthProvider } from './clerk';
 import type { AuthObject } from '@clerk/backend';
 
-const mockDb = vi.hoisted(() => ({
-	select: vi.fn().mockReturnThis(),
-	from: vi.fn().mockReturnThis(),
-	where: vi.fn().mockReturnThis(),
-	execute: vi.fn(),
-	insert: vi.fn().mockReturnThis(),
-	values: vi.fn().mockReturnThis(),
-	query: {
-		usersTable: {
-			findFirst: vi.fn()
-		}
-	}
-}));
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('$lib/server/db/mock');
+	return mockDb;
+});
 
 vi.mock('$lib/server/db', () => ({
 	db: mockDb
@@ -36,10 +27,6 @@ vi.mock('clerk-sveltekit/server', () => ({
 }));
 
 describe('ClerkAuthProvider', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	describe('isAuthenticated', () => {
 		it('should return true if auth.userId is set', () => {
 			const auth = { userId: 'user123' } as AuthObject;

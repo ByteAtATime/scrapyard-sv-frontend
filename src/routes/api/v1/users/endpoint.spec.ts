@@ -2,13 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { endpoint_GET } from './endpoint';
 import { MockAuthProvider } from '$lib/server/auth/mock';
 
-const mockDb = vi.hoisted(() => ({
-	query: {
-		usersTable: {
-			findMany: vi.fn()
-		}
-	}
-}));
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('$lib/server/db/mock');
+	return mockDb;
+});
 
 vi.mock('$lib/server/db', () => ({
 	db: mockDb
@@ -16,7 +13,7 @@ vi.mock('$lib/server/db', () => ({
 
 describe('GET /api/v1/users', () => {
 	beforeEach(() => {
-		mockDb.query.usersTable.findMany.mockClear();
+		vi.clearAllMocks();
 	});
 
 	it('should return users if organizer', async () => {

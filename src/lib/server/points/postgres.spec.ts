@@ -4,14 +4,10 @@ import { PointTransaction } from './transaction';
 import { pointTransactionsTable } from '../db/schema';
 import { MockAuthProvider } from '../auth/mock';
 
-const mockDb = vi.hoisted(() => ({
-	select: vi.fn().mockReturnThis(),
-	from: vi.fn().mockReturnThis(),
-	where: vi.fn().mockReturnThis(),
-	insert: vi.fn().mockReturnThis(),
-	values: vi.fn().mockReturnThis(),
-	returning: vi.fn().mockReturnThis()
-}));
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('$lib/server/db/mock');
+	return mockDb;
+});
 
 vi.mock('$lib/server/db', () => ({
 	db: mockDb

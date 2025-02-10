@@ -2,13 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { endpoint_GET } from './endpoint';
 import { MockAuthProvider } from '$lib/server/auth/mock';
 
-const mockDb = vi.hoisted(() => ({
-	query: {
-		usersTable: {
-			findFirst: vi.fn()
-		}
-	}
-}));
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('$lib/server/db/mock');
+	return mockDb;
+});
 
 vi.mock('$lib/server/db', () => ({
 	db: mockDb

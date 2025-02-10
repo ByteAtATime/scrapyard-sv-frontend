@@ -3,18 +3,10 @@ import { endpoint_POST } from './endpoint';
 import { MockAuthProvider } from '$lib/server/auth/mock';
 import { MockEventsRepository } from '$lib/server/events/mock';
 
-const mockDb = vi.hoisted(() => ({
-	select: vi.fn().mockReturnThis(),
-	from: vi.fn().mockReturnThis(),
-	where: vi.fn().mockReturnThis(),
-	and: vi.fn().mockReturnThis(),
-	eq: vi.fn().mockReturnThis(),
-	limit: vi.fn().mockReturnThis()
-}));
-
-vi.mock('$lib/server/db', () => ({
-	db: mockDb
-}));
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('$lib/server/db/mock');
+	return mockDb;
+});
 
 describe('POST /api/v1/events/[id]/check-in', () => {
 	it('should return success if user check-in is successful', async () => {
