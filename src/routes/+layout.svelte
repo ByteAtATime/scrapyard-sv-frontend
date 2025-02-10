@@ -3,7 +3,6 @@
 	import ClerkProvider from 'clerk-sveltekit/client/ClerkProvider.svelte';
 	import { PUBLIC_CLERK_PUBLISHABLE_KEY } from '$env/static/public';
 	import { ModeWatcher } from 'mode-watcher';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 
 	let { children } = $props();
@@ -13,7 +12,5 @@
 <Toaster />
 
 <ClerkProvider publishableKey={PUBLIC_CLERK_PUBLISHABLE_KEY}>
-	<ThemeToggle />
-
 	{@render children?.()}
 </ClerkProvider>
