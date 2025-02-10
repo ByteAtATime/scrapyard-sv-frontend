@@ -7,9 +7,9 @@
 		CommandItem
 	} from '$lib/components/ui/command';
 	import { Loader2, UserIcon } from 'lucide-svelte';
-	import type { User } from '../types';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import type { User } from '$lib/server/auth/user';
 
 	type Props = {
 		onSelect: (user: User) => void;

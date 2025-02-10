@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { Input } from '$lib/components/ui/input';
 	import { toast } from 'svelte-sonner';
-	import * as Avatar from '$lib/components/ui/avatar';
-	import { UserIcon, Loader2 } from 'lucide-svelte';
+	import { Loader2 } from 'lucide-svelte';
 	import type { User } from '$lib/server/auth/user';
 	import UserSelect from '$lib/components/user-select/UserSelect.svelte';
-	import { formatDate } from '$lib/utils/date';
+	import UserCard from '$lib/components/user-card/UserCard.svelte';
 
 	type Props = {
 		onCheckIn: (userId: number) => Promise<boolean>;
@@ -130,44 +129,13 @@
 	<form id="scan-form" onsubmit={handleSubmit} class="hidden"></form>
 
 	{#if lastCheckedUser}
-		<div
-			class="rounded-lg border p-3 @container {checkInError
-				? 'border-red-500 bg-destructive/30'
-				: 'bg-muted/50'}"
-		>
-			<div class="flex flex-col items-center gap-3 @md:flex-row">
-				<div class="flex grow flex-col items-center gap-4 @md:flex-row">
-					<Avatar.Root class="size-10">
-						<Avatar.Fallback>
-							<UserIcon class="size-5 text-muted-foreground" />
-						</Avatar.Fallback>
-					</Avatar.Root>
-
-					<div class="text-center @md:text-left">
-						<p class="font-medium text-foreground">{lastCheckedUser.name}</p>
-						<p class="text-sm text-muted-foreground">{lastCheckedUser.email}</p>
-
-						<div class="mt-2 flex flex-wrap gap-2 text-xs">
-							<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
-								ID: {lastCheckedUser.id}
-							</span>
-							<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
-								{lastCheckedUser.totalPoints} points
-							</span>
-							{#if lastCheckedUser.isOrganizer}
-								<span class="rounded-md bg-blue-500/10 px-2 py-0.5 text-blue-500"> Organizer </span>
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				<div class="text-center @md:text-right">
-					<p class="font-medium {checkInError ? 'text-red-600' : 'text-green-600'}">
-						{checkInError ? 'Check-in failed' : 'Successfully checked in'}
-					</p>
-					<p class="text-xs text-muted-foreground">{formatDate(new Date())}</p>
-				</div>
-			</div>
-		</div>
+		<UserCard
+			user={lastCheckedUser}
+			status={{
+				type: checkInError ? 'error' : 'success',
+				message: checkInError ? 'Check-in failed' : 'Successfully checked in',
+				timestamp: true
+			}}
+		/>
 	{/if}
 </div>

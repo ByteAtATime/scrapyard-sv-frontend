@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import type { User } from '$lib/server/auth/user';
 	import { Loader2 } from 'lucide-svelte';
-	import type { User } from '../types';
 	import { toast } from 'svelte-sonner';
 
 	type Props = {
