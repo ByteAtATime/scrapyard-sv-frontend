@@ -59,7 +59,7 @@ export class PostgresEventsRepository implements IEventsRepository {
 			throw new Error('Event not found');
 		}
 
-		db.transaction(async (tx) => {
+		await db.transaction(async (tx) => {
 			const pointValue = event.attendancePoints;
 
 			if (pointValue) {

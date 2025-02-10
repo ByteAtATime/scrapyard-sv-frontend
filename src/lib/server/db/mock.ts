@@ -11,6 +11,7 @@ export const mockDb = {
 	execute: vi.fn(),
 	returning: vi.fn().mockReturnThis(),
 	values: vi.fn().mockReturnThis(),
+	set: vi.fn().mockReturnThis(),
 	transaction: vi.fn((cb) => cb(mockDb)),
 	query: {
 		usersTable: {

@@ -24,6 +24,7 @@ beforeEach(() => {
 	mockDb.execute.mockClear();
 	mockDb.returning.mockReturnThis();
 	mockDb.values.mockReturnThis();
+	mockDb.set.mockReturnThis();
 	mockDb.transaction.mockImplementation((cb) => cb(mockDb));
 	mockDb.query.usersTable.findFirst.mockClear();
 	mockDb.query.usersTable.findMany.mockClear();
