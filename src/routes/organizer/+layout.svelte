@@ -5,8 +5,10 @@
 
 <Sidebar.Provider>
 	<OrganizerSidebar />
-	<main class="flex-1 p-4">
-		<Sidebar.Trigger />
-		<slot />
-	</main>
+	<Sidebar.Inset>
+		<main class="flex-1 p-4">
+			<Sidebar.Trigger />
+			<slot />
+		</main>
+	</Sidebar.Inset>
 </Sidebar.Provider>
