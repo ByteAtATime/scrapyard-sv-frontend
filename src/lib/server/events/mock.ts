@@ -9,4 +9,5 @@ export class MockEventsRepository implements IEventsRepository {
 	checkInUser = vi.fn();
 	getAttendanceByEvent = vi.fn();
 	getAttendanceByUser = vi.fn();
+	getEventStatistics = vi.fn();
 }

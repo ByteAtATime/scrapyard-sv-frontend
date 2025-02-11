@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PostgresPointsRepository } from './postgres';
 import { PointTransaction } from './transaction';
-import { pointTransactionsTable } from '../db/schema';
+import {
+	eventAttendanceTable,
+	eventsTable,
+	pointTransactionsTable,
+	usersTable
+} from '../db/schema';
 import { MockAuthProvider } from '../auth/mock';
 
 const mockDb = await vi.hoisted(async () => {
@@ -87,6 +92,95 @@ describe('PostgresPointsRepository', () => {
 				authorId: transaction.authorId
 			});
 			expect(mockDb.returning).toHaveBeenCalled();
+		});
+	});
+
+	describe('getPointsStatistics', () => {
+		it('should return correct statistics with non-zero attendees', async () => {
+			const repo = new PostgresPointsRepository();
+
+			mockDb.leftJoin
+				.mockImplementationOnce(() => mockDb)
+				.mockImplementationOnce(() =>
+					Promise.resolve([
+						{
+							totalPointsAwarded: 1000,
+							totalAttendees: 10
+						}
+					])
+				);
+
+			mockDb.limit.mockResolvedValueOnce([
+				{
+					userId: 1,
+					name: 'John Doe',
+					totalPoints: 500
+				}
+			]);
+
+			const result = await repo.getPointsStatistics();
+
+			expect(result.totalPointsAwarded).toBe(1000);
+			expect(result.averagePointsPerAttendee).toBe(100);
+			expect(result.topEarner).toEqual({
+				userId: 1,
+				name: 'John Doe',
+				totalPoints: 500
+			});
+
+			expect(mockDb.select).toHaveBeenCalledWith({
+				totalPointsAwarded: expect.any(Object),
+				totalAttendees: expect.any(Object)
+			});
+			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
+			expect(mockDb.leftJoin).toHaveBeenNthCalledWith(1, eventAttendanceTable, expect.any(Object));
+			expect(mockDb.leftJoin).toHaveBeenNthCalledWith(
+				2,
+				pointTransactionsTable,
+				expect.any(Object)
+			);
+
+			expect(mockDb.select).toHaveBeenCalledWith({
+				userId: usersTable.id,
+				name: usersTable.name,
+				totalPoints: usersTable.totalPoints
+			});
+			expect(mockDb.from).toHaveBeenCalledWith(usersTable);
+			expect(mockDb.orderBy).toHaveBeenCalledWith(expect.any(Object));
+			expect(mockDb.limit).toHaveBeenCalledWith(1);
+		});
+
+		it('should handle zero attendees', async () => {
+			const repo = new PostgresPointsRepository();
+
+			mockDb.leftJoin
+				.mockImplementationOnce(() => mockDb)
+				.mockImplementationOnce(() =>
+					Promise.resolve([
+						{
+							totalPointsAwarded: 0,
+							totalAttendees: 0
+						}
+					])
+				);
+
+			mockDb.limit.mockResolvedValueOnce([
+				{
+					userId: 1,
+					name: 'Jane Smith',
+					totalPoints: 0
+				}
+			]);
+
+			const result = await repo.getPointsStatistics();
+
+			expect(result.totalPointsAwarded).toBe(0);
+			expect(result.averagePointsPerAttendee).toBe(0);
+			expect(result.topEarner).toEqual({
+				userId: 1,
+				name: 'Jane Smith',
+				totalPoints: 0
+			});
 		});
 	});
 });

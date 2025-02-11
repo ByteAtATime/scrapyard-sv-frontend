@@ -6,4 +6,5 @@ export class MockPointsRepository implements IPointsRepository {
 	awardPoints = vi.fn();
 	getTransactions = vi.fn();
 	reviewTransaction = vi.fn();
+	getPointsStatistics = vi.fn();
 }

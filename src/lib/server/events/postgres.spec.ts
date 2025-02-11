@@ -10,6 +10,7 @@ import {
 import { MockAuthProvider } from '../auth/mock';
 import { mockDb } from '../db/mock';
 import type { EventData } from '../db/types';
+import { SQL } from 'drizzle-orm';
 
 describe('PostgresEventsRepository', () => {
 	describe('createEvent', () => {
@@ -333,6 +334,60 @@ describe('PostgresEventsRepository', () => {
 			expect(mockDb.select).toHaveBeenCalled();
 			expect(mockDb.from).toHaveBeenCalledWith(eventAttendanceTable);
 			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
+		});
+	});
+
+	describe('getEventStatistics', () => {
+		it('should return correct statistics when there are events', async () => {
+			const repo = new PostgresEventsRepository();
+
+			mockDb.leftJoin.mockImplementationOnce(() =>
+				Promise.resolve([
+					{
+						totalEvents: 5,
+						totalAttendees: 20,
+						totalAttendance: 50
+					}
+				])
+			);
+
+			const result = await repo.getEventStatistics();
+
+			expect(result).toEqual({
+				totalEvents: 5,
+				totalAttendees: 20,
+				averageAttendancePerEvent: 10 // 50 / 5
+			});
+
+			expect(mockDb.select).toHaveBeenCalledWith({
+				totalEvents: expect.any(SQL),
+				totalAttendees: expect.any(SQL),
+				totalAttendance: expect.any(SQL)
+			});
+			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
+			expect(mockDb.leftJoin).toHaveBeenCalledWith(eventAttendanceTable, expect.any(SQL));
+		});
+
+		it('should handle zero events without division errors', async () => {
+			const repo = new PostgresEventsRepository();
+
+			mockDb.leftJoin.mockImplementationOnce(() =>
+				Promise.resolve([
+					{
+						totalEvents: 0,
+						totalAttendees: 0,
+						totalAttendance: 0
+					}
+				])
+			);
+
+			const result = await repo.getEventStatistics();
+
+			expect(result).toEqual({
+				totalEvents: 0,
+				totalAttendees: 0,
+				averageAttendancePerEvent: 0
+			});
 		});
 	});
 });

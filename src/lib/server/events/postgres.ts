@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import type { EventData, EventAttendanceData } from '../db/types';
-import type { IEventsRepository } from './types';
+import type { IEventsRepository, EventStatistics } from './types';
 import {
 	eventAttendanceTable,
 	eventsTable,
@@ -93,5 +93,25 @@ export class PostgresEventsRepository implements IEventsRepository {
 
 	async getAttendanceByUser(userId: number): Promise<EventAttendanceData[]> {
 		return db.select().from(eventAttendanceTable).where(eq(eventAttendanceTable.userId, userId));
+	}
+
+	async getEventStatistics(): Promise<EventStatistics> {
+		const result = await db
+			.select({
+				totalEvents: sql<number>`COUNT(DISTINCT ${eventsTable.id})`,
+				totalAttendees: sql<number>`COUNT(DISTINCT ${eventAttendanceTable.userId})`,
+				totalAttendance: sql<number>`COUNT(${eventAttendanceTable.eventId})`
+			})
+			.from(eventsTable)
+			.leftJoin(eventAttendanceTable, sql`${eventsTable.id} = ${eventAttendanceTable.eventId}`);
+
+		const stats = result[0];
+		const totalEvents = Number(stats.totalEvents);
+
+		return {
+			totalEvents,
+			totalAttendees: Number(stats.totalAttendees),
+			averageAttendancePerEvent: totalEvents > 0 ? Number(stats.totalAttendance) / totalEvents : 0
+		};
 	}
 }

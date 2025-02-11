@@ -1,7 +1,17 @@
 import { eq, sum, sql, and, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { pointTransactionsTable, usersTable } from '$lib/server/db/schema';
-import type { IPointsRepository, ReviewTransactionOptions, ReviewTransactionResult } from './types';
+import {
+	eventAttendanceTable,
+	eventsTable,
+	pointTransactionsTable,
+	usersTable
+} from '$lib/server/db/schema';
+import type {
+	IPointsRepository,
+	PointsStatistics,
+	ReviewTransactionOptions,
+	ReviewTransactionResult
+} from './types';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
@@ -149,5 +159,45 @@ export class PostgresPointsRepository implements IPointsRepository {
 			.where(eq(pointTransactionsTable.id, options.transactionId));
 
 		return { success: true };
+	}
+
+	async getPointsStatistics(): Promise<PointsStatistics> {
+		const [pointsResult, topEarnerResult] = await Promise.all([
+			db
+				.select({
+					totalPointsAwarded: sql<number>`COALESCE(SUM(${pointTransactionsTable.amount}), 0)`,
+					totalAttendees: sql<number>`COUNT(DISTINCT ${eventAttendanceTable.userId})`
+				})
+				.from(eventsTable)
+				.leftJoin(eventAttendanceTable, sql`${eventsTable.id} = ${eventAttendanceTable.eventId}`)
+				.leftJoin(
+					pointTransactionsTable,
+					sql`${pointTransactionsTable.reason} LIKE 'Attended event:%' AND ${pointTransactionsTable.status} = 'approved'`
+				),
+			db
+				.select({
+					userId: usersTable.id,
+					name: usersTable.name,
+					totalPoints: usersTable.totalPoints
+				})
+				.from(usersTable)
+				.orderBy(sql`${usersTable.totalPoints} DESC`)
+				.limit(1)
+		]);
+
+		const stats = pointsResult[0];
+		const topEarner = topEarnerResult[0];
+		const totalPoints = Number(stats.totalPointsAwarded);
+		const totalAttendees = Number(stats.totalAttendees);
+
+		return {
+			totalPointsAwarded: totalPoints,
+			averagePointsPerAttendee: totalAttendees > 0 ? totalPoints / totalAttendees : 0,
+			topEarner: {
+				userId: topEarner.userId,
+				name: topEarner.name,
+				totalPoints: topEarner.totalPoints
+			}
+		};
 	}
 }

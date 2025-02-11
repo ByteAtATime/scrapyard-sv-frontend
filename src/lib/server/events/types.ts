@@ -1,5 +1,11 @@
-import type { EventAttendanceData, EventData } from '../db/types';
 import type { Event } from './event';
+import type { EventData, EventAttendanceData } from '../db/types';
+
+export interface EventStatistics {
+	totalEvents: number;
+	totalAttendees: number;
+	averageAttendancePerEvent: number;
+}
 
 export interface IEventsRepository {
 	createEvent(event: Event): Promise<number>;
@@ -10,4 +16,5 @@ export interface IEventsRepository {
 	checkInUser(eventId: number, userId: number, author: number): Promise<void>;
 	getAttendanceByEvent(eventId: number): Promise<EventAttendanceData[]>;
 	getAttendanceByUser(userId: number): Promise<EventAttendanceData[]>;
+	getEventStatistics(): Promise<EventStatistics>;
 }
