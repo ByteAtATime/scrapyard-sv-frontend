@@ -1,12 +1,17 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import { Home, LayoutDashboard, ListChecks, Coins, UserRoundCog } from 'lucide-svelte';
+	import { Home, LayoutDashboard, ListChecks, Coins, UserRoundCog, Calendar } from 'lucide-svelte';
 
 	const items = [
 		{
+			title: 'Dashboard',
+			url: '/organizer',
+			icon: LayoutDashboard
+		},
+		{
 			title: 'Events',
 			url: '/organizer/events',
-			icon: LayoutDashboard
+			icon: Calendar
 		},
 		{
 			title: 'Award Points',
