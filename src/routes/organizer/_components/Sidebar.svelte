@@ -23,7 +23,9 @@
 
 <Sidebar.Root collapsible="icon" variant="inset">
 	<Sidebar.Header>
-		<div class="flex items-center overflow-hidden p-2">
+		<div
+			class="flex w-full items-center overflow-hidden p-2 transition-[width] group-data-[collapsible=icon]:!w-8"
+		>
 			<UserRoundCog class="h-6 w-6 shrink-0" />
 
 			<span class="ml-2 text-lg font-semibold">Organizer</span>
