@@ -8,6 +8,7 @@ import {
 	usersTable
 } from '../db/schema';
 import { MockAuthProvider } from '../auth/mock';
+import { SQL } from 'drizzle-orm';
 
 const mockDb = await vi.hoisted(async () => {
 	const { mockDb } = await import('$lib/server/db/mock');
@@ -181,6 +182,48 @@ describe('PostgresPointsRepository', () => {
 				name: 'Jane Smith',
 				totalPoints: 0
 			});
+		});
+	});
+
+	describe('getTransactionsByUser', () => {
+		it('should return a list of transactions for a specific user', async () => {
+			const userId = 1;
+			const mockTransaction = {
+				id: 10,
+				userId: userId,
+				amount: 50,
+				reason: 'Test',
+				authorId: 2,
+				createdAt: new Date(),
+				status: 'pending',
+				reviewerId: null,
+				reviewedAt: null,
+				rejectionReason: null,
+				user: { id: userId, name: 'Test User', email: 'test@example.com' },
+				author: { id: 2, name: 'Author', email: 'author@example.com' },
+				reviewer: null
+			};
+
+			mockDb.orderBy.mockResolvedValueOnce([mockTransaction]);
+
+			const repo = new PostgresPointsRepository();
+			const transactions = await repo.getTransactionsByUser(userId);
+
+			expect(transactions).toHaveLength(1);
+			expect(transactions[0]).toEqual(mockTransaction);
+
+			expect(mockDb.where).toHaveBeenCalledWith(expect.any(SQL));
+		});
+
+		it('should return an empty list if no transactions are found', async () => {
+			const userId = 999;
+
+			mockDb.orderBy.mockResolvedValueOnce([]);
+
+			const repo = new PostgresPointsRepository();
+			const transactions = await repo.getTransactionsByUser(userId);
+
+			expect(transactions).toEqual([]);
 		});
 	});
 });

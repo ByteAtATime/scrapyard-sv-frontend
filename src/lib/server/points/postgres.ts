@@ -14,7 +14,7 @@ import type {
 } from './types';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PointTransactionData } from '../db/types';
-import type { PointTransaction } from './transaction';
+import type { PointTransaction, PointTransactionJson } from './transaction';
 
 export class PostgresPointsRepository implements IPointsRepository {
 	async getTotalPoints(userId: number): Promise<number> {
@@ -119,6 +119,78 @@ export class PostgresPointsRepository implements IPointsRepository {
 							email: t.reviewer.email
 						}
 					: undefined
+		}));
+	}
+
+	async getTransactionsByUser(userId: number): Promise<PointTransactionJson[]> {
+		const userAlias = alias(usersTable, 'user');
+		const authorAlias = alias(usersTable, 'author');
+		const reviewerAlias = alias(usersTable, 'reviewer');
+
+		const transactions = await db
+			.select({
+				id: pointTransactionsTable.id,
+				userId: pointTransactionsTable.userId,
+				amount: pointTransactionsTable.amount,
+				reason: pointTransactionsTable.reason,
+				authorId: pointTransactionsTable.authorId,
+				createdAt: pointTransactionsTable.createdAt,
+				status: pointTransactionsTable.status,
+				reviewerId: pointTransactionsTable.reviewerId,
+				reviewedAt: pointTransactionsTable.reviewedAt,
+				rejectionReason: pointTransactionsTable.rejectionReason,
+				user: {
+					id: userAlias.id,
+					name: userAlias.name,
+					email: userAlias.email
+				},
+				author: {
+					id: authorAlias.id,
+					name: authorAlias.name,
+					email: authorAlias.email
+				},
+				reviewer: {
+					id: reviewerAlias.id,
+					name: reviewerAlias.name,
+					email: reviewerAlias.email
+				}
+			})
+			.from(pointTransactionsTable)
+			.innerJoin(userAlias, eq(pointTransactionsTable.userId, userAlias.id))
+			.innerJoin(authorAlias, eq(pointTransactionsTable.authorId, authorAlias.id))
+			.leftJoin(reviewerAlias, eq(pointTransactionsTable.reviewerId, reviewerAlias.id))
+			.where(eq(pointTransactionsTable.userId, userId))
+			.orderBy(sql`${pointTransactionsTable.createdAt} DESC`);
+
+		return transactions.map((t) => ({
+			id: t.id,
+			userId: t.userId,
+			amount: t.amount,
+			reason: t.reason,
+			authorId: t.authorId,
+			createdAt: t.createdAt,
+			status: t.status,
+			reviewerId: t.reviewerId,
+			reviewedAt: t.reviewedAt,
+			rejectionReason: t.rejectionReason,
+			user: {
+				id: t.user.id,
+				name: t.user.name,
+				email: t.user.email
+			},
+			author: {
+				id: t.author.id,
+				name: t.author.name,
+				email: t.author.email
+			},
+			reviewer:
+				t.reviewer && t.reviewer.id
+					? {
+							id: t.reviewer.id,
+							name: t.reviewer.name,
+							email: t.reviewer.email
+						}
+					: null
 		}));
 	}
 

@@ -67,6 +67,9 @@
 					Rejection reason: <span class="text-foreground">{rejectionReason}</span>
 				</p>
 			{/if}
+			{#if status === 'pending'}
+				<p class="text-muted-foreground">This transaction is not final.</p>
+			{/if}
 		</Tooltip.Content>
 	</Tooltip.Root>
 </Tooltip.Provider>
