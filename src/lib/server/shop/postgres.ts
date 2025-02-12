@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm';
-import type { ShopRepository } from './types';
+import type { IShopRepository } from './types';
 import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
 import { db } from '../db';
 import { shopItemsTable } from '../db/schema';
 
-export class PostgresShopRepository implements ShopRepository {
+export class PostgresShopRepository implements IShopRepository {
 	async getAllItems(): Promise<ShopItem[]> {
 		return await db.select().from(shopItemsTable).orderBy(shopItemsTable.id);
 	}
