@@ -25,51 +25,49 @@
 		return mapping[status];
 	}
 
-	type Reviewer = { name: string };
 	type Props = {
 		status: PointTransactionData['status'];
+		reviewer?: { name: string } | null;
 		rejectionReason?: string | null;
-		reviewer?: Reviewer | null;
+		showTooltip?: boolean;
 	};
 
-	const { status, rejectionReason, reviewer }: Props = $props();
+	const { status, reviewer, rejectionReason, showTooltip = true }: Props = $props();
 
 	const className = $derived(
 		status === 'approved' ? 'bg-green-700 hover:bg-green-800 text-white' : ''
 	);
 </script>
 
-{#snippet badge({
-	status,
-	className
-}: {
-	status: PointTransactionData['status'];
-	className: string;
-})}
+{#snippet badge()}
 	<Badge variant={getStatusBadgeVariant(status)} class={className}>
 		{getStatusBadgeText(status)}
 	</Badge>
 {/snippet}
 
-<Tooltip.Provider delayDuration={0}>
-	<Tooltip.Root>
-		<Tooltip.Trigger>
-			{@render badge({ status, className })}
-		</Tooltip.Trigger>
-		<Tooltip.Content>
-			{#if reviewer}
-				<p class="text-muted-foreground">
-					Reviewed by <span class="text-foreground">{reviewer.name}</span>
-				</p>
-			{/if}
-			{#if status === 'rejected' && rejectionReason}
-				<p class="text-muted-foreground">
-					Rejection reason: <span class="text-foreground">{rejectionReason}</span>
-				</p>
-			{/if}
-			{#if status === 'pending'}
-				<p class="text-muted-foreground">This transaction is not final.</p>
-			{/if}
-		</Tooltip.Content>
-	</Tooltip.Root>
-</Tooltip.Provider>
+{#if showTooltip && (reviewer || rejectionReason || status === 'pending')}
+	<Tooltip.Provider delayDuration={0}>
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				{@render badge()}
+			</Tooltip.Trigger>
+			<Tooltip.Content>
+				{#if reviewer}
+					<p class="text-muted-foreground">
+						Reviewed by <span class="text-foreground">{reviewer.name}</span>
+					</p>
+				{/if}
+				{#if status === 'rejected' && rejectionReason}
+					<p class="text-muted-foreground">
+						Rejection reason: <span class="text-foreground">{rejectionReason}</span>
+					</p>
+				{/if}
+				{#if status === 'pending'}
+					<p class="text-muted-foreground">This transaction is not final.</p>
+				{/if}
+			</Tooltip.Content>
+		</Tooltip.Root>
+	</Tooltip.Provider>
+{:else}
+	{@render badge()}
+{/if}
