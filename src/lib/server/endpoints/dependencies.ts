@@ -1,11 +1,11 @@
 import { ClerkAuthProvider } from '../auth/clerk';
 import type { IAuthProvider } from '../auth/types';
-import { PostgresEventsRepository } from '../events/postgres';
-import type { IEventsRepository } from '../events/types';
-import { PostgresPointsRepository } from '../points/postgres';
-import type { IPointsRepository } from '../points/types';
-import type { IShopRepository } from '../shop';
-import { PostgresShopRepository } from '../shop/postgres';
+import { PostgresEventsRepo } from '../events/postgres';
+import type { IEventsRepo } from '../events/types';
+import { PostgresPointsRepo } from '../points/postgres';
+import type { IPointsRepo } from '../points/types';
+import type { IShopRepo } from '../shop';
+import { PostgresShopRepo } from '../shop/postgres';
 import type { MiddlewareHandler } from './types';
 
 export const withAuthProvider = <
@@ -17,29 +17,29 @@ export const withAuthProvider = <
 	};
 };
 
-export const withPointsRepository = <
-	TDeps extends { pointsRepository: IPointsRepository }
->(): MiddlewareHandler<Omit<TDeps, 'pointsRepository'>> => {
+export const withPointsRepo = <TDeps extends { pointsRepo: IPointsRepo }>(): MiddlewareHandler<
+	Omit<TDeps, 'pointsRepo'>
+> => {
 	return async (deps, event, next) => {
-		const pointsRepository = new PostgresPointsRepository();
-		return next({ ...deps, pointsRepository } as unknown as TDeps);
+		const pointsRepo = new PostgresPointsRepo();
+		return next({ ...deps, pointsRepo } as unknown as TDeps);
 	};
 };
 
-export const withEventsRepository = <
-	TDeps extends { eventsRepository: IEventsRepository }
->(): MiddlewareHandler<Omit<TDeps, 'eventsRepository'>> => {
+export const withEventsRepo = <TDeps extends { eventsRepo: IEventsRepo }>(): MiddlewareHandler<
+	Omit<TDeps, 'eventsRepo'>
+> => {
 	return async (deps, event, next) => {
-		const eventsRepository = new PostgresEventsRepository();
-		return next({ ...deps, eventsRepository } as unknown as TDeps);
+		const eventsRepo = new PostgresEventsRepo();
+		return next({ ...deps, eventsRepo } as unknown as TDeps);
 	};
 };
 
-export const withShopRepository = <
-	TDeps extends { shopRepository: IShopRepository }
->(): MiddlewareHandler<Omit<TDeps, 'shopRepository'>> => {
+export const withShopRepo = <TDeps extends { shopRepo: IShopRepo }>(): MiddlewareHandler<
+	Omit<TDeps, 'shopRepo'>
+> => {
 	return async (deps, event, next) => {
-		const shopRepository = new PostgresShopRepository();
-		return next({ ...deps, shopRepository } as unknown as TDeps);
+		const shopRepo = new PostgresShopRepo();
+		return next({ ...deps, shopRepo } as unknown as TDeps);
 	};
 };

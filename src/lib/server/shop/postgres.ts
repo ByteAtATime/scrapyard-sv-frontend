@@ -1,10 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm';
-import type { IShopRepository, Order, OrderStatus } from './types';
+import type { IShopRepo, Order, OrderStatus } from './types';
 import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
 import { db } from '../db';
 import { ordersTable, pointTransactionsTable, shopItemsTable, usersTable } from '../db/schema';
 
-export class PostgresShopRepository implements IShopRepository {
+export class PostgresShopRepo implements IShopRepo {
 	async getAllItems(onlyOrderable: boolean = false): Promise<ShopItem[]> {
 		if (onlyOrderable) {
 			return await db

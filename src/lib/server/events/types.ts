@@ -7,7 +7,7 @@ export interface EventStatistics {
 	averageAttendancePerEvent: number;
 }
 
-export interface IEventsRepository {
+export interface IEventsRepo {
 	createEvent(event: Event): Promise<number>;
 	getEventById(id: number): Promise<EventData | null>;
 	getEvents(): Promise<EventData[]>;

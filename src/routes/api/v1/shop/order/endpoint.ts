@@ -1,6 +1,6 @@
 import type { IAuthProvider } from '$lib/server/auth/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
-import type { IShopRepository } from '$lib/server/shop';
+import type { IShopRepo } from '$lib/server/shop';
 import { z } from 'zod';
 
 export const postSchema = z.object({
@@ -9,9 +9,9 @@ export const postSchema = z.object({
 
 export const endpoint_POST: EndpointHandler<{
 	authProvider: IAuthProvider;
-	shopRepository: IShopRepository;
+	shopRepo: IShopRepo;
 	body: z.infer<typeof postSchema>;
-}> = async ({ authProvider, shopRepository, body }) => {
+}> = async ({ authProvider, shopRepo, body }) => {
 	const userId = await authProvider.getUserId();
 
 	if (!userId) {
@@ -22,7 +22,7 @@ export const endpoint_POST: EndpointHandler<{
 	}
 
 	try {
-		const order = await shopRepository.createOrder(userId, body.itemId);
+		const order = await shopRepo.createOrder(userId, body.itemId);
 		return order;
 	} catch (error) {
 		return {

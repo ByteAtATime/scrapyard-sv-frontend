@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
-import { pointsRepository } from '$lib/server/points';
+import { pointsRepo } from '$lib/server/points';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = parseInt(params.id, 10);
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		return { error: 'User not found' };
 	}
 
-	const rawTransactions = await pointsRepository.getTransactionsByUser(id);
+	const rawTransactions = await pointsRepo.getTransactionsByUser(id);
 	const transactions = rawTransactions.filter((t) => t.status !== 'deleted');
 
 	return { user, transactions };

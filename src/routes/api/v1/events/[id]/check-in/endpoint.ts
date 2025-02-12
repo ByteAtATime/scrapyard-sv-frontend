@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { db } from '$lib/server/db';
 import { eventAttendanceTable } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
-import type { IEventsRepository } from '$lib/server/events/types';
+import type { IEventsRepo } from '$lib/server/events/types';
 
 export const postSchema = z.object({
 	userId: z.number()
@@ -12,10 +12,10 @@ export const postSchema = z.object({
 
 export const endpoint_POST: EndpointHandler<{
 	authProvider: IAuthProvider;
-	eventsRepository: IEventsRepository;
+	eventsRepo: IEventsRepo;
 	body: z.infer<typeof postSchema>;
 	params: { id: string };
-}> = async ({ authProvider, body, params, eventsRepository }) => {
+}> = async ({ authProvider, body, params, eventsRepo }) => {
 	if (!(await authProvider.isOrganizer())) {
 		return {
 			success: false,
@@ -55,7 +55,7 @@ export const endpoint_POST: EndpointHandler<{
 		};
 	}
 
-	await eventsRepository.checkInUser(eventId, userId, authorId);
+	await eventsRepo.checkInUser(eventId, userId, authorId);
 
 	return { success: true };
 };

@@ -1,10 +1,10 @@
-import { eventsRepository } from '$lib/server/events';
-import { pointsRepository } from '$lib/server/points';
+import { eventsRepo } from '$lib/server/events';
+import { pointsRepo } from '$lib/server/points';
 
 export async function load() {
 	const [eventStats, pointsStats] = await Promise.all([
-		eventsRepository.getEventStatistics(),
-		pointsRepository.getPointsStatistics()
+		eventsRepo.getEventStatistics(),
+		pointsRepo.getPointsStatistics()
 	]);
 
 	return {

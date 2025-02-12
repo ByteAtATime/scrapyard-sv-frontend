@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
-import type { IEventsRepository } from './types';
+import type { IEventsRepo } from './types';
 
-export class MockEventsRepository implements IEventsRepository {
+export class MockEventsRepo implements IEventsRepo {
 	createEvent = vi.fn();
 	getEventById = vi.fn();
 	getEvents = vi.fn();

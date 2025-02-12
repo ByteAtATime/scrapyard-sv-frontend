@@ -1,4 +1,4 @@
-import type { IPointsRepository } from '$lib/server/points/types';
+import type { IPointsRepo } from '$lib/server/points/types';
 import { z } from 'zod';
 import type { UserData } from '../db/types';
 import type { IAuthProvider } from './types';
@@ -52,7 +52,7 @@ export class User {
 export class CurrentUser {
 	constructor(
 		private auth: IAuthProvider,
-		private pointsRepository: IPointsRepository
+		private pointsRepo: IPointsRepo
 	) {}
 
 	private _id: number | null = null;
@@ -88,7 +88,7 @@ export class CurrentUser {
 			throw new Error('User not authenticated');
 		}
 
-		this._totalPoints = await this.pointsRepository.getTotalPoints(id);
+		this._totalPoints = await this.pointsRepo.getTotalPoints(id);
 		return this._totalPoints;
 	}
 }

@@ -1,11 +1,11 @@
 import type { IAuthProvider } from '$lib/server/auth/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
-import type { IPointsRepository } from '$lib/server/points/types';
+import type { IPointsRepo } from '$lib/server/points/types';
 
 export const endpoint_GET: EndpointHandler<{
-	pointsRepository: IPointsRepository;
+	pointsRepo: IPointsRepo;
 	authProvider: IAuthProvider;
-}> = async ({ pointsRepository, authProvider }) => {
+}> = async ({ pointsRepo, authProvider }) => {
 	if (!(await authProvider.isOrganizer())) {
 		return {
 			success: false,
@@ -13,7 +13,7 @@ export const endpoint_GET: EndpointHandler<{
 		};
 	}
 
-	const transactions = await pointsRepository.getTransactions();
+	const transactions = await pointsRepo.getTransactions();
 
 	return transactions;
 };

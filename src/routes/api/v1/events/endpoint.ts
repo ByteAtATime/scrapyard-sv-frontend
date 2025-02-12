@@ -1,14 +1,14 @@
 import type { IAuthProvider } from '$lib/server/auth/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
-import type { IEventsRepository } from '$lib/server/events/types';
+import type { IEventsRepo } from '$lib/server/events/types';
 import { Event } from '$lib/server/events/event';
 import { z } from 'zod';
 
 export const endpoint_GET: EndpointHandler<{
-	eventsRepository: IEventsRepository;
+	eventsRepo: IEventsRepo;
 	authProvider: IAuthProvider;
-}> = async ({ eventsRepository, authProvider }) => {
-	const events = await eventsRepository.getEvents();
+}> = async ({ eventsRepo, authProvider }) => {
+	const events = await eventsRepo.getEvents();
 	const settled = await Promise.allSettled(
 		events.map((event) => new Event(event, authProvider).toJson())
 	);
@@ -28,9 +28,9 @@ export const postSchema = z.object({
 
 export const endpoint_POST: EndpointHandler<{
 	authProvider: IAuthProvider;
-	eventsRepository: IEventsRepository;
+	eventsRepo: IEventsRepo;
 	body: z.infer<typeof postSchema>;
-}> = async ({ authProvider, eventsRepository, body }) => {
+}> = async ({ authProvider, eventsRepo, body }) => {
 	if (!(await authProvider.isOrganizer())) {
 		return {
 			status: 403,
@@ -52,7 +52,7 @@ export const endpoint_POST: EndpointHandler<{
 		authProvider
 	);
 
-	const eventId = await eventsRepository.createEvent(event);
+	const eventId = await eventsRepo.createEvent(event);
 
 	return {
 		id: eventId

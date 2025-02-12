@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import type { EventData, EventAttendanceData } from '../db/types';
-import type { IEventsRepository, EventStatistics } from './types';
+import type { IEventsRepo, EventStatistics } from './types';
 import {
 	eventAttendanceTable,
 	eventsTable,
@@ -10,7 +10,7 @@ import {
 } from '../db/schema';
 import type { Event } from './event';
 
-export class PostgresEventsRepository implements IEventsRepository {
+export class PostgresEventsRepo implements IEventsRepo {
 	async createEvent(event: Event): Promise<number> {
 		const result = await db
 			.insert(eventsTable)

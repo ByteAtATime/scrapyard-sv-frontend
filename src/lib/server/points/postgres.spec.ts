@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PostgresPointsRepository } from './postgres';
+import { PostgresPointsRepo } from './postgres';
 import { PointTransaction } from './transaction';
 import {
 	eventAttendanceTable,
@@ -19,7 +19,7 @@ vi.mock('$lib/server/db', () => ({
 	db: mockDb
 }));
 
-describe('PostgresPointsRepository', () => {
+describe('PostgresPointsRepo', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -31,7 +31,7 @@ describe('PostgresPointsRepository', () => {
 
 			mockDb.where.mockResolvedValue([{ totalPoints: expectedPoints }]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 			const points = await repo.getTotalPoints(userId);
 
 			expect(points).toBe(expectedPoints);
@@ -42,7 +42,7 @@ describe('PostgresPointsRepository', () => {
 			const userId = 1;
 			mockDb.where.mockResolvedValue([]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 
 			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
 		});
@@ -51,7 +51,7 @@ describe('PostgresPointsRepository', () => {
 			const userId = 1;
 			mockDb.where.mockResolvedValue([{ totalPoints: null }]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 
 			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
 		});
@@ -81,7 +81,7 @@ describe('PostgresPointsRepository', () => {
 				.values()
 				.returning.mockResolvedValue([{ id: 5 }]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 			const id = await repo.awardPoints(transaction);
 
 			expect(id).toBe(5);
@@ -98,7 +98,7 @@ describe('PostgresPointsRepository', () => {
 
 	describe('getPointsStatistics', () => {
 		it('should return correct statistics with non-zero attendees', async () => {
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 
 			mockDb.leftJoin
 				.mockImplementationOnce(() => mockDb)
@@ -152,7 +152,7 @@ describe('PostgresPointsRepository', () => {
 		});
 
 		it('should handle zero attendees', async () => {
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 
 			mockDb.leftJoin
 				.mockImplementationOnce(() => mockDb)
@@ -206,7 +206,7 @@ describe('PostgresPointsRepository', () => {
 
 			mockDb.orderBy.mockResolvedValueOnce([mockTransaction]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 			const transactions = await repo.getTransactionsByUser(userId);
 
 			expect(transactions).toHaveLength(1);
@@ -220,7 +220,7 @@ describe('PostgresPointsRepository', () => {
 
 			mockDb.orderBy.mockResolvedValueOnce([]);
 
-			const repo = new PostgresPointsRepository();
+			const repo = new PostgresPointsRepo();
 			const transactions = await repo.getTransactionsByUser(userId);
 
 			expect(transactions).toEqual([]);

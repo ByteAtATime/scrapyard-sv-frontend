@@ -1,6 +1,6 @@
-import { PostgresPointsRepository } from './postgres';
+import { PostgresPointsRepo } from './postgres';
 
-export const pointsRepository = new PostgresPointsRepository();
+export const pointsRepo = new PostgresPointsRepo();
 
 export * from './types';
 export * from './transaction';

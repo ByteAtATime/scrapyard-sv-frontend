@@ -1,6 +1,6 @@
 import type { IAuthProvider } from '$lib/server/auth/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
-import type { IPointsRepository } from '$lib/server/points/types';
+import type { IPointsRepo } from '$lib/server/points/types';
 import { z } from 'zod';
 
 export const postSchema = z
@@ -15,10 +15,10 @@ export const postSchema = z
 	});
 
 export const endpoint_POST: EndpointHandler<{
-	pointsRepository: IPointsRepository;
+	pointsRepo: IPointsRepo;
 	authProvider: IAuthProvider;
 	body: z.infer<typeof postSchema>;
-}> = async ({ pointsRepository, authProvider, body }) => {
+}> = async ({ pointsRepo, authProvider, body }) => {
 	if (!(await authProvider.isOrganizer())) {
 		return {
 			success: false,
@@ -34,7 +34,7 @@ export const endpoint_POST: EndpointHandler<{
 		};
 	}
 
-	const result = await pointsRepository.reviewTransaction({
+	const result = await pointsRepo.reviewTransaction({
 		transactionId: body.transactionId,
 		reviewerId,
 		status:

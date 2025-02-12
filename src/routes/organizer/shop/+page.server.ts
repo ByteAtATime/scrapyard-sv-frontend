@@ -1,12 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { shopRepository } from '$lib/server/shop';
+import { shopRepo } from '$lib/server/shop';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod } from 'sveltekit-superforms/adapters';
 import { shopItemSchema, editShopItemSchema, deleteShopItemSchema } from './schema';
 
 export const load: PageServerLoad = async () => {
-	const items = await shopRepository.getAllItems();
+	const items = await shopRepo.getAllItems();
 
 	return {
 		items,
@@ -25,7 +25,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await shopRepository.createItem(form.data);
+			await shopRepo.createItem(form.data);
 			return message(form, { type: 'success', text: 'Item created successfully' });
 		} catch (e) {
 			console.error(e);
@@ -42,7 +42,7 @@ export const actions: Actions = {
 
 		try {
 			const { id, ...data } = form.data;
-			await shopRepository.updateItem(id, data);
+			await shopRepo.updateItem(id, data);
 			return message(form, { type: 'success', text: 'Item updated successfully' });
 		} catch (e) {
 			console.error(e);
@@ -58,7 +58,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await shopRepository.deleteItem(form.data.id);
+			await shopRepo.deleteItem(form.data.id);
 			return message(form, { type: 'success', text: 'Item deleted successfully' });
 		} catch (e) {
 			console.error(e);

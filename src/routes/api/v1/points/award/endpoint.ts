@@ -2,7 +2,7 @@ import type { IAuthProvider } from '$lib/server/auth/types';
 import { insertPointTransactionSchema } from '$lib/server/db/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
 import { PointTransaction } from '$lib/server/points/transaction';
-import type { IPointsRepository } from '$lib/server/points/types';
+import type { IPointsRepo } from '$lib/server/points/types';
 import { z } from 'zod';
 
 export const postSchema = z.object({
@@ -12,10 +12,10 @@ export const postSchema = z.object({
 });
 
 export const endpoint_POST: EndpointHandler<{
-	pointsRepository: IPointsRepository;
+	pointsRepo: IPointsRepo;
 	authProvider: IAuthProvider;
 	body: z.infer<typeof postSchema>;
-}> = async ({ pointsRepository, authProvider, body }) => {
+}> = async ({ pointsRepo, authProvider, body }) => {
 	const { userId, amount, reason } = body;
 
 	if (!(await authProvider.isOrganizer())) {
@@ -60,7 +60,7 @@ export const endpoint_POST: EndpointHandler<{
 		},
 		authProvider
 	);
-	await pointsRepository.awardPoints(transaction);
+	await pointsRepo.awardPoints(transaction);
 
 	return { success: true };
 };

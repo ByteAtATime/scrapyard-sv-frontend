@@ -2,12 +2,12 @@ import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { createEventSchema } from './schema';
-import { PostgresEventsRepository } from '$lib/server/events/postgres';
+import { PostgresEventsRepo } from '$lib/server/events/postgres';
 import { zod } from 'sveltekit-superforms/adapters';
 
 export const load: PageServerLoad = async () => {
-	const eventsRepository = new PostgresEventsRepository();
-	const events = await eventsRepository.getEvents();
+	const eventsRepo = new PostgresEventsRepo();
+	const events = await eventsRepo.getEvents();
 
 	return {
 		events: events.map((event) => ({

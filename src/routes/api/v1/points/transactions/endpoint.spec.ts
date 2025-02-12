@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { endpoint_GET } from './endpoint';
 import { MockAuthProvider } from '$lib/server/auth/mock';
-import { MockPointsRepository } from '$lib/server/points/mock';
+import { MockPointsRepo } from '$lib/server/points/mock';
 
 describe('GET /api/v1/points/transactions', () => {
 	it('should return transactions if organizer', async () => {
 		const authProvider = new MockAuthProvider().mockOrganizer();
-		const pointsRepository = new MockPointsRepository();
+		const pointsRepo = new MockPointsRepo();
 		const mockTransactions = [
 			{
 				id: 1,
@@ -18,21 +18,21 @@ describe('GET /api/v1/points/transactions', () => {
 				status: 'pending'
 			}
 		];
-		pointsRepository.getTransactions.mockResolvedValue(mockTransactions);
+		pointsRepo.getTransactions.mockResolvedValue(mockTransactions);
 
-		const result = await endpoint_GET({ authProvider, pointsRepository });
+		const result = await endpoint_GET({ authProvider, pointsRepo });
 
 		expect(result).toEqual(mockTransactions);
-		expect(pointsRepository.getTransactions).toHaveBeenCalled();
+		expect(pointsRepo.getTransactions).toHaveBeenCalled();
 	});
 
 	it('should return unauthorized if not organizer', async () => {
 		const authProvider = new MockAuthProvider().mockSignedIn();
-		const pointsRepository = new MockPointsRepository();
+		const pointsRepo = new MockPointsRepo();
 
-		const result = await endpoint_GET({ authProvider, pointsRepository });
+		const result = await endpoint_GET({ authProvider, pointsRepo });
 
 		expect(result).toEqual({ success: false, error: 'Unauthorized' });
-		expect(pointsRepository.getTransactions).not.toHaveBeenCalled();
+		expect(pointsRepo.getTransactions).not.toHaveBeenCalled();
 	});
 });

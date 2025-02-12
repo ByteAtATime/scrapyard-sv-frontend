@@ -25,7 +25,7 @@ export interface PointsStatistics {
 	topEarner: TopPointEarner;
 }
 
-export interface IPointsRepository {
+export interface IPointsRepo {
 	awardPoints(transaction: PointTransaction): Promise<number>;
 	getTotalPoints(userId: number): Promise<number>;
 	getTransactions(): Promise<PointTransactionData[]>;

@@ -1,5 +1,5 @@
 import { MockAuthProvider } from '$lib/server/auth/mock';
-import { MockEventsRepository } from '$lib/server/events/mock';
+import { MockEventsRepo } from '$lib/server/events/mock';
 import { describe, expect, it, vi } from 'vitest';
 import { endpoint_GET, endpoint_POST } from './endpoint';
 import { Event, type EventJson } from '$lib/server/events/event';
@@ -27,17 +27,17 @@ describe('events', () => {
 	describe('GET', () => {
 		it('should return a list of events', async () => {
 			const authProvider = new MockAuthProvider().mockOrganizer();
-			const eventsRepository = new MockEventsRepository();
-			eventsRepository.getEvents.mockResolvedValue([mockEventData]);
+			const eventsRepo = new MockEventsRepo();
+			eventsRepo.getEvents.mockResolvedValue([mockEventData]);
 
 			vi.spyOn(Event.prototype, 'toJson').mockResolvedValue({
 				...mockEventData,
 				contactOrganizer: mockOrganizer
 			});
 
-			const result = await endpoint_GET({ eventsRepository, authProvider });
+			const result = await endpoint_GET({ eventsRepo, authProvider });
 
-			expect(eventsRepository.getEvents).toHaveBeenCalled();
+			expect(eventsRepo.getEvents).toHaveBeenCalled();
 			expect(result).toEqual([
 				{
 					...mockEventData,
@@ -48,24 +48,24 @@ describe('events', () => {
 
 		it('should filter out events that fail serialization', async () => {
 			const authProvider = new MockAuthProvider().mockOrganizer();
-			const eventsRepository = new MockEventsRepository();
-			eventsRepository.getEvents.mockResolvedValue([mockEventData, { ...mockEventData, id: 2 }]);
+			const eventsRepo = new MockEventsRepo();
+			eventsRepo.getEvents.mockResolvedValue([mockEventData, { ...mockEventData, id: 2 }]);
 
 			vi.spyOn(Event.prototype, 'toJson')
 				.mockRejectedValueOnce(new Error('Unauthorized'))
 				.mockResolvedValueOnce({ ...mockEventData, id: 2 });
 
-			const result = await endpoint_GET({ eventsRepository, authProvider });
+			const result = await endpoint_GET({ eventsRepo, authProvider });
 
 			expect(result).toEqual([{ ...mockEventData, id: 2 }]);
 		});
 
 		it('should return empty array when no events exist', async () => {
 			const authProvider = new MockAuthProvider().mockOrganizer();
-			const eventsRepository = new MockEventsRepository();
-			eventsRepository.getEvents.mockResolvedValue([]);
+			const eventsRepo = new MockEventsRepo();
+			eventsRepo.getEvents.mockResolvedValue([]);
 
-			const result = await endpoint_GET({ eventsRepository, authProvider });
+			const result = await endpoint_GET({ eventsRepo, authProvider });
 
 			expect(result).toEqual([]);
 		});
@@ -74,8 +74,8 @@ describe('events', () => {
 	describe('POST', () => {
 		it('should allow organizer to create event', async () => {
 			const authProvider = new MockAuthProvider().mockOrganizer();
-			const eventsRepository = new MockEventsRepository();
-			eventsRepository.createEvent.mockResolvedValue(123);
+			const eventsRepo = new MockEventsRepo();
+			eventsRepo.createEvent.mockResolvedValue(123);
 
 			const body = {
 				name: 'Test Event',
@@ -85,15 +85,15 @@ describe('events', () => {
 				contactOrganizerId: 1
 			};
 
-			const result = await endpoint_POST({ authProvider, eventsRepository, body });
+			const result = await endpoint_POST({ authProvider, eventsRepo, body });
 
-			expect(eventsRepository.createEvent).toHaveBeenCalledWith(expect.any(Event));
+			expect(eventsRepo.createEvent).toHaveBeenCalledWith(expect.any(Event));
 			expect(result).toEqual({ id: 123 });
 		});
 
 		it('should return 403 if user is not organizer', async () => {
 			const authProvider = new MockAuthProvider().mockSignedIn();
-			const eventsRepository = new MockEventsRepository();
+			const eventsRepo = new MockEventsRepo();
 			const body = {
 				name: 'Test Event',
 				description: 'Test Description',
@@ -102,9 +102,9 @@ describe('events', () => {
 				contactOrganizerId: 1
 			};
 
-			const result = await endpoint_POST({ authProvider, eventsRepository, body });
+			const result = await endpoint_POST({ authProvider, eventsRepo, body });
 
-			expect(eventsRepository.createEvent).not.toHaveBeenCalled();
+			expect(eventsRepo.createEvent).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				status: 403,
 				error: 'Unauthorized'
@@ -113,8 +113,8 @@ describe('events', () => {
 
 		it('should handle nullable contactOrganizerId', async () => {
 			const authProvider = new MockAuthProvider().mockOrganizer();
-			const eventsRepository = new MockEventsRepository();
-			eventsRepository.createEvent.mockResolvedValue(124);
+			const eventsRepo = new MockEventsRepo();
+			eventsRepo.createEvent.mockResolvedValue(124);
 
 			const body = {
 				name: 'Test Event',
@@ -124,9 +124,9 @@ describe('events', () => {
 				contactOrganizerId: null
 			};
 
-			await endpoint_POST({ authProvider, eventsRepository, body });
+			await endpoint_POST({ authProvider, eventsRepo, body });
 
-			const createdEvent = eventsRepository.createEvent.mock.calls[0][0];
+			const createdEvent = eventsRepo.createEvent.mock.calls[0][0];
 			expect(createdEvent.contactOrganizerId).toBeUndefined();
 		});
 	});

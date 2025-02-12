@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
-import type { IPointsRepository } from './types';
+import type { IPointsRepo } from './types';
 
-export class MockPointsRepository implements IPointsRepository {
+export class MockPointsRepo implements IPointsRepo {
 	getTotalPoints = vi.fn();
 	awardPoints = vi.fn();
 	getTransactions = vi.fn();

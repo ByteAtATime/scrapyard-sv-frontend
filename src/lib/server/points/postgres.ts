@@ -7,7 +7,7 @@ import {
 	usersTable
 } from '$lib/server/db/schema';
 import type {
-	IPointsRepository,
+	IPointsRepo,
 	PointsStatistics,
 	ReviewTransactionOptions,
 	ReviewTransactionResult
@@ -16,7 +16,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction, PointTransactionJson } from './transaction';
 
-export class PostgresPointsRepository implements IPointsRepository {
+export class PostgresPointsRepo implements IPointsRepo {
 	async getTotalPoints(userId: number): Promise<number> {
 		const result = await db
 			.select({

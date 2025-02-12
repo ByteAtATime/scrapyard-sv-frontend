@@ -1,6 +1,6 @@
-import { PostgresEventsRepository } from './postgres';
+import { PostgresEventsRepo } from './postgres';
 
-export const eventsRepository = new PostgresEventsRepository();
+export const eventsRepo = new PostgresEventsRepo();
 
 export * from './types';
 export * from './event';

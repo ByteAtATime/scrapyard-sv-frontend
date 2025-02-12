@@ -10,7 +10,7 @@ export type Order = InferSelectModel<typeof ordersTable>;
 
 export type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
 
-export interface IShopRepository {
+export interface IShopRepo {
 	getAllItems(onlyOrderable?: boolean): Promise<ShopItem[]>;
 	getItemById(id: number): Promise<ShopItem | null>;
 	updateStock(id: number, newStock: number): Promise<void>;

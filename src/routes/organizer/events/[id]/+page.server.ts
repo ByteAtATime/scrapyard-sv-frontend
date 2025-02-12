@@ -2,7 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
-import { PostgresEventsRepository } from '$lib/server/events/postgres';
+import { PostgresEventsRepo } from '$lib/server/events/postgres';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 import { zod } from 'sveltekit-superforms/adapters';
 
@@ -11,7 +11,7 @@ const checkInSchema = z.object({
 });
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	const eventsRepository = new PostgresEventsRepository();
+	const eventsRepo = new PostgresEventsRepo();
 	const authProvider = new ClerkAuthProvider(locals.auth);
 
 	const eventId = parseInt(params.id);
@@ -19,12 +19,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw error(400, 'Invalid event ID');
 	}
 
-	const event = await eventsRepository.getEventById(eventId);
+	const event = await eventsRepo.getEventById(eventId);
 	if (!event) {
 		throw error(404, 'Event not found');
 	}
 
-	const attendance = await eventsRepository.getAttendanceByEvent(eventId);
+	const attendance = await eventsRepo.getAttendanceByEvent(eventId);
 	const attendanceWithNames = await Promise.all(
 		attendance.map(async (record) => {
 			const user = await authProvider.getUserById(record.userId);
@@ -74,14 +74,14 @@ export const actions: Actions = {
 			return fail(400, { form });
 		}
 
-		const eventsRepository = new PostgresEventsRepository();
+		const eventsRepo = new PostgresEventsRepo();
 
 		try {
 			const organizerId = await authProvider.getUserId();
 			if (!organizerId) {
 				return fail(401, { form });
 			}
-			await eventsRepository.checkInUser(eventId, form.data.userId, organizerId);
+			await eventsRepo.checkInUser(eventId, form.data.userId, organizerId);
 			return { form };
 		} catch (e) {
 			return fail(400, {

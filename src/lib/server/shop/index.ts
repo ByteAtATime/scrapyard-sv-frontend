@@ -1,5 +1,5 @@
-import { PostgresShopRepository } from './postgres';
+import { PostgresShopRepo } from './postgres';
 
 export * from './types';
 
-export const shopRepository = new PostgresShopRepository();
+export const shopRepo = new PostgresShopRepo();
