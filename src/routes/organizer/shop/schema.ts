@@ -5,7 +5,8 @@ export const shopItemSchema = z.object({
 	description: z.string().min(1, 'Description is required'),
 	imageUrl: z.string().url('Must be a valid URL'),
 	price: z.number().int().positive('Price must be a positive number'),
-	stock: z.number().int().min(0, 'Stock cannot be negative')
+	stock: z.number().int().min(0, 'Stock cannot be negative'),
+	isOrderable: z.boolean()
 });
 
 export const editShopItemSchema = shopItemSchema.extend({

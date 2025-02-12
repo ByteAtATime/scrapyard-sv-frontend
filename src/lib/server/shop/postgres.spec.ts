@@ -17,6 +17,7 @@ describe('PostgresShopProvider', () => {
 		imageUrl: 'test.jpg',
 		price: 99.99,
 		stock: 10,
+		isOrderable: true,
 		createdAt: new Date(),
 		updatedAt: new Date()
 	};
@@ -86,7 +87,8 @@ describe('PostgresShopProvider', () => {
 				description: 'New Description',
 				imageUrl: 'new.jpg',
 				price: 49.99,
-				stock: 20
+				stock: 20,
+				isOrderable: true
 			};
 
 			mockDb.insert(shopItemsTable).values.mockReturnThis();

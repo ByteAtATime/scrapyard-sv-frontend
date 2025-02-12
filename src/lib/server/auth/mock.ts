@@ -5,6 +5,7 @@ export class MockAuthProvider implements IAuthProvider {
 	isAuthenticated = vi.fn();
 	getUserId = vi.fn();
 	isOrganizer = vi.fn();
+	getCurrentUser = vi.fn();
 
 	getUserById = vi.fn();
 

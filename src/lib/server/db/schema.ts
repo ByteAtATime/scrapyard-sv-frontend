@@ -71,5 +71,20 @@ export const shopItemsTable = pgTable('shop_items', {
 	price: integer('price').notNull(),
 	stock: integer('stock').notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+	isOrderable: boolean('is_orderable').notNull().default(true)
+});
+
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'fulfilled', 'cancelled']);
+
+export const ordersTable = pgTable('orders', {
+	id: serial('id').primaryKey(),
+	userId: integer('user_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	shopItemId: integer('shop_item_id')
+		.references(() => shopItemsTable.id)
+		.notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	status: orderStatusEnum('status').default('pending').notNull()
 });

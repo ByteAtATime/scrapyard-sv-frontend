@@ -7,6 +7,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Coins, Pencil, Trash2 } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms/client';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 
 	let { data } = $props();
 	const { items } = $derived(data);
@@ -41,6 +42,7 @@
 	let isDeleteDialogOpen = $state(false);
 
 	function onEditClick(item: (typeof items)[number]) {
+		console.log(JSON.stringify(item, null, 2));
 		editingItem = item;
 		$editForm = {
 			id: item.id,
@@ -48,7 +50,8 @@
 			description: item.description,
 			imageUrl: item.imageUrl,
 			price: item.price,
-			stock: item.stock
+			stock: item.stock,
+			isOrderable: item.isOrderable
 		};
 		isEditDialogOpen = true;
 	}
@@ -95,6 +98,7 @@
 					<Table.Head>Image URL</Table.Head>
 					<Table.Head>Price</Table.Head>
 					<Table.Head>Stock</Table.Head>
+					<Table.Head>Orderable</Table.Head>
 					<Table.Head class="w-[100px]">Actions</Table.Head>
 				</Table.Row>
 			</Table.Header>
@@ -111,6 +115,7 @@
 							</div>
 						</Table.Cell>
 						<Table.Cell>{item.stock}</Table.Cell>
+						<Table.Cell>{item.isOrderable ? 'Yes' : 'No'}</Table.Cell>
 						<Table.Cell>
 							<div class="flex gap-2">
 								<Button
@@ -227,6 +232,12 @@
 					</span>
 				{/if}
 			</div>
+			<div class="space-y-2">
+				<Label class="flex items-center gap-1">
+					<Checkbox name="isOrderable" id="isOrderable" bind:checked={$createForm.isOrderable} />
+					Orderable
+				</Label>
+			</div>
 			<div class="flex justify-end gap-2">
 				<Button type="button" variant="outline" onclick={() => (isCreateDialogOpen = false)}>
 					Cancel
@@ -321,6 +332,12 @@
 						{$editErrors.stock[0]}
 					</span>
 				{/if}
+			</div>
+			<div class="space-y-2">
+				<Label class="flex items-center gap-1">
+					<Checkbox name="isOrderable" id="isOrderable" bind:checked={$editForm.isOrderable} />
+					Orderable
+				</Label>
 			</div>
 			<div class="flex justify-end gap-2">
 				<Button type="button" variant="outline" onclick={() => (isEditDialogOpen = false)}>

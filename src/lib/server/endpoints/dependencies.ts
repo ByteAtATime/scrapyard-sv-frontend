@@ -4,6 +4,8 @@ import { PostgresEventsRepository } from '../events/postgres';
 import type { IEventsRepository } from '../events/types';
 import { PostgresPointsRepository } from '../points/postgres';
 import type { IPointsRepository } from '../points/types';
+import type { IShopRepository } from '../shop';
+import { PostgresShopRepository } from '../shop/postgres';
 import type { MiddlewareHandler } from './types';
 
 export const withAuthProvider = <
@@ -30,5 +32,14 @@ export const withEventsRepository = <
 	return async (deps, event, next) => {
 		const eventsRepository = new PostgresEventsRepository();
 		return next({ ...deps, eventsRepository } as unknown as TDeps);
+	};
+};
+
+export const withShopRepository = <
+	TDeps extends { shopRepository: IShopRepository }
+>(): MiddlewareHandler<Omit<TDeps, 'shopRepository'>> => {
+	return async (deps, event, next) => {
+		const shopRepository = new PostgresShopRepository();
+		return next({ ...deps, shopRepository } as unknown as TDeps);
 	};
 };

@@ -17,7 +17,7 @@
 	} from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
 	import { toast } from 'svelte-sonner';
-	import StatusBadge from '../../../../lib/components/StatusBadge.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RejectDialog from './_components/RejectDialog.svelte';
 	import type { PointTransactionData } from '$lib/server/db/types';
 

@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { usersTable } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { clerkClient } from 'clerk-sveltekit/server';
+import { User } from './user';
 
 export class ClerkAuthProvider implements IAuthProvider {
 	constructor(private auth: AuthObject) {}
@@ -14,10 +15,7 @@ export class ClerkAuthProvider implements IAuthProvider {
 
 	async getUserId() {
 		const clerkUserId = this.auth.userId;
-
-		if (!clerkUserId) {
-			return null;
-		}
+		if (!clerkUserId) return null;
 
 		const ids = await db
 			.select({ id: usersTable.id })
@@ -26,13 +24,7 @@ export class ClerkAuthProvider implements IAuthProvider {
 			.execute();
 
 		if (ids.length === 0) {
-			const clerkUser = await clerkClient.users.getUser(clerkUserId);
-			await db.insert(usersTable).values({
-				name: clerkUser.fullName ?? clerkUser.firstName + ' ' + clerkUser.lastName,
-				email: clerkUser.emailAddresses[0].emailAddress,
-				authProvider: 'clerk',
-				authProviderId: clerkUserId
-			});
+			await this.createUserFromClerk(clerkUserId);
 			return null;
 		}
 
@@ -41,27 +33,34 @@ export class ClerkAuthProvider implements IAuthProvider {
 
 	async isOrganizer() {
 		const clerkUserId = this.auth.userId;
-
-		if (!clerkUserId) {
-			return false;
-		}
+		if (!clerkUserId) return false;
 
 		const user = await db.query.usersTable.findFirst({
 			where: eq(usersTable.authProviderId, clerkUserId)
 		});
 
 		if (!user) {
-			const clerkUser = await clerkClient.users.getUser(clerkUserId);
-			await db.insert(usersTable).values({
-				name: clerkUser.fullName ?? clerkUser.firstName + ' ' + clerkUser.lastName,
-				email: clerkUser.emailAddresses[0].emailAddress,
-				authProvider: 'clerk',
-				authProviderId: clerkUserId
-			});
+			await this.createUserFromClerk(clerkUserId);
 			return false;
 		}
 
 		return user.isOrganizer ?? false;
+	}
+
+	async getCurrentUser() {
+		const clerkUserId = this.auth.userId;
+		if (!clerkUserId) return null;
+
+		const user = await db.query.usersTable.findFirst({
+			where: eq(usersTable.authProviderId, clerkUserId)
+		});
+
+		if (!user) {
+			await this.createUserFromClerk(clerkUserId);
+			return null;
+		}
+
+		return new User(user, this);
 	}
 
 	async getUserById(id: number) {
@@ -70,5 +69,15 @@ export class ClerkAuthProvider implements IAuthProvider {
 		});
 
 		return user ?? null;
+	}
+
+	private async createUserFromClerk(clerkUserId: string) {
+		const clerkUser = await clerkClient.users.getUser(clerkUserId);
+		await db.insert(usersTable).values({
+			name: clerkUser.fullName ?? clerkUser.firstName + ' ' + clerkUser.lastName,
+			email: clerkUser.emailAddresses[0].emailAddress,
+			authProvider: 'clerk',
+			authProviderId: clerkUserId
+		});
 	}
 }
