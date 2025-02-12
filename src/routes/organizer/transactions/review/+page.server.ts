@@ -9,7 +9,7 @@ import { z } from 'zod';
 export const load: PageServerLoad = async ({ fetch }) => {
 	const response = await fetch('/api/v1/points/transactions');
 	const transactions = z
-		.object({ data: z.object({ data: z.array(pointTransactionJsonSchema) }) })
+		.object({ data: z.array(pointTransactionJsonSchema) })
 		.parse(await response.json());
 
 	const approveForm = await superValidate(zod(approveSchema));

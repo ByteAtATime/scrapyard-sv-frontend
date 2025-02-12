@@ -95,7 +95,7 @@
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{#each data.transactions.data as transaction}
+					{#each data.transactions as transaction}
 						<TableRow>
 							<TableCell>{new Date(transaction.createdAt).toLocaleString()}</TableCell>
 							<TableCell>{transaction.userId}</TableCell>
