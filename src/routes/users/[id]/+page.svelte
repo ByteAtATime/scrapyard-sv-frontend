@@ -12,14 +12,18 @@
 
 <div class="container max-w-3xl py-8">
 	<div class="flex items-center gap-4">
-		<Avatar.Root class="h-16 w-16">
+		<Avatar.Root class="h-24 w-24 text-4xl">
 			<Avatar.Fallback>{user?.name?.[0]?.toUpperCase()}</Avatar.Fallback>
 		</Avatar.Root>
 		<div class="flex-1">
 			<h1 class="text-3xl font-bold">{user?.name}</h1>
 			<div class="mt-2 flex items-center gap-2">
 				<Coins class="h-4 w-4 text-yellow-500" />
-				<span class="text-lg font-semibold">{user?.totalPoints} points</span>
+
+				<span>
+					<span class="text-2xl">{user?.totalPoints}</span>
+					<span class="text-lg text-muted-foreground">points</span>
+				</span>
 			</div>
 		</div>
 	</div>
