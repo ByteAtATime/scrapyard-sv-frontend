@@ -50,7 +50,11 @@
 
 {#snippet transactionCard()}
 	<div
-		class={cn('rounded transition-colors duration-200', statusColors, isRejected && 'opacity-75')}
+		class={cn(
+			'rounded-xl transition-colors duration-200',
+			statusColors,
+			isRejected && 'opacity-75'
+		)}
 	>
 		<div class="flex items-center gap-4 p-4">
 			<div
