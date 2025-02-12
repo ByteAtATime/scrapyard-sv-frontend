@@ -49,6 +49,7 @@ Svelte 5 introduces a new reactivity system based on **runes**. These are specia
   + let { message }: { message: string } = $props(); // Svelte 5 - $props for props
   ```
   **To declare component props, use `let { prop1, prop2, ... } = $props();` instead of `export let`.** Fallback values are still supported in destructuring: `let { prop = 'default' } = $props();`
+- You must always give types to props. This is done by having a `type Props = { ... }` declaration, and then you should do `const { prop1, prop2, ... }: Props = $props();`. Note that the `$props` rune is not generic; DO NOT DO `$props<Props>()`.
 
 ### 3. Events: Event Attributes (CHANGED - ADJUST YOUR EVENT HANDLING)
 
