@@ -62,3 +62,14 @@ export const eventAttendanceTable = pgTable('event_attendance', {
 		() => pointTransactionsTable.id
 	)
 });
+
+export const shopItemsTable = pgTable('shop_items', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description').notNull(),
+	imageUrl: text('image_url').notNull(),
+	price: integer('price').notNull(),
+	stock: integer('stock').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
