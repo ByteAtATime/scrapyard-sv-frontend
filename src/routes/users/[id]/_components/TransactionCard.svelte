@@ -110,7 +110,7 @@
 	<Tooltip.Trigger class="block w-full">
 		{@render transactionCard()}
 	</Tooltip.Trigger>
-	<Tooltip.Content>
+	<Tooltip.Content sideOffset={-40}>
 		{@render tooltipContent()}
 	</Tooltip.Content>
 </Tooltip.Root>
