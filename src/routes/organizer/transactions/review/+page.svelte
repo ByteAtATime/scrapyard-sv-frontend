@@ -98,7 +98,14 @@
 					{#each data.transactions as transaction}
 						<TableRow>
 							<TableCell>{new Date(transaction.createdAt).toLocaleString()}</TableCell>
-							<TableCell>{transaction.userId}</TableCell>
+							<TableCell>
+								<a
+									href="/users/{transaction.user.id}"
+									class="underline hover:text-blue-800 dark:hover:text-blue-300"
+								>
+									{transaction.user.name}
+								</a>
+							</TableCell>
 							<TableCell>{transaction.amount}</TableCell>
 							<TableCell>{transaction.reason}</TableCell>
 							<TableCell>{transaction.authorId}</TableCell>
