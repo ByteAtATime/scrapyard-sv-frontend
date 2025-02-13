@@ -1,10 +1,14 @@
+import { withAuthProvider } from '$lib/server/endpoints/dependencies';
 import { compose, withBodySchema } from '$lib/server/endpoints';
-import { withAuthProvider, withShopRepo } from '$lib/server/endpoints/dependencies';
+import { orderEndpoint } from './endpoint';
 import type { RequestHandler } from './$types';
-import { endpoint_POST, postSchema } from './endpoint';
+import { z } from 'zod';
+
+const bodySchema = z.object({
+	itemId: z.number()
+});
 
 export const POST: RequestHandler = compose(
 	withAuthProvider(),
-	withShopRepo(),
-	withBodySchema(postSchema)
-)(endpoint_POST);
+	withBodySchema(bodySchema)
+)(orderEndpoint);

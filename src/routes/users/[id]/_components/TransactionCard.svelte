@@ -44,7 +44,7 @@
 	);
 
 	const formattedDate = $derived(
-		transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString() : null
+		transaction.createdAt ? new Date(transaction.createdAt).toLocaleString() : null
 	);
 </script>
 

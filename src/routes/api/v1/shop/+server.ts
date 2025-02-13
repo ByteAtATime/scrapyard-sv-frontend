@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { shopRepo } from '$lib/server/shop';
+import { shopService } from '$lib/server/shop';
+import type { RequestHandler } from './$types';
 
 // Cache duration in seconds (5 minutes)
 const CACHE_DURATION = 300;
 
-export async function GET({ setHeaders }) {
-	const items = await shopRepo.getAllItems();
+export const GET: RequestHandler = async ({ setHeaders }) => {
+	const items = await shopService.getAllItems(true);
 
 	// Set cache headers
 	setHeaders({
@@ -14,4 +15,4 @@ export async function GET({ setHeaders }) {
 	});
 
 	return json(items);
-}
+};

@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { shopRepo } from '$lib/server/shop';
+import { shopService } from '$lib/server/shop';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { purchaseSchema } from './schema';
@@ -7,7 +7,7 @@ import { fail } from '@sveltejs/kit';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 
 export const load: PageServerLoad = async () => {
-	const items = await shopRepo.getAllItems();
+	const items = await shopService.getAllItems(true);
 
 	const purchaseForm = await superValidate(zod(purchaseSchema));
 
@@ -30,22 +30,14 @@ export const actions = {
 			return fail(403, { form, error: 'You must be logged in to purchase items.' });
 		}
 
-		const item = await shopRepo.getItemById(form.data.itemId);
-
-		if (!item) {
-			return fail(404, { form, error: 'Item not found.' });
+		try {
+			await shopService.purchaseItem(user.id, form.data.itemId);
+			return message(form, 'Item purchased successfully.');
+		} catch (error) {
+			if (error instanceof Error) {
+				return fail(400, { form, error: error.message });
+			}
+			throw error;
 		}
-
-		if (user.totalPoints < item.price) {
-			return fail(400, { form, error: 'You do not have enough points to purchase this item.' });
-		}
-
-		if (item.stock <= 0) {
-			return fail(400, { form, error: 'This item is out of stock.' });
-		}
-
-		await shopRepo.createOrder(user.id, form.data.itemId);
-
-		return message(form, 'Item purchased successfully.');
 	}
 };

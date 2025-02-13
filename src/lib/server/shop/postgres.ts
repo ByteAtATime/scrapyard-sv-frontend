@@ -1,18 +1,11 @@
-import { and, eq, sql } from 'drizzle-orm';
-import type { IShopRepo, Order, OrderStatus } from './types';
+import { eq } from 'drizzle-orm';
+import type { IShopRepo, Order, OrderStatus, CreateOrderData } from './types';
 import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
 import { db } from '../db';
-import { ordersTable, pointTransactionsTable, shopItemsTable, usersTable } from '../db/schema';
+import { ordersTable, shopItemsTable } from '../db/schema';
 
-export class PostgresShopRepo implements IShopRepo {
-	async getAllItems(onlyOrderable: boolean = false): Promise<ShopItem[]> {
-		if (onlyOrderable) {
-			return await db
-				.select()
-				.from(shopItemsTable)
-				.where(eq(shopItemsTable.isOrderable, true))
-				.orderBy(shopItemsTable.id);
-		}
+export class PostgresShopRepository implements IShopRepo {
+	async getAllItems(): Promise<ShopItem[]> {
 		return await db.select().from(shopItemsTable).orderBy(shopItemsTable.id);
 	}
 
@@ -41,54 +34,9 @@ export class PostgresShopRepo implements IShopRepo {
 		await db.delete(shopItemsTable).where(eq(shopItemsTable.id, id));
 	}
 
-	async createOrder(userId: number, itemId: number): Promise<Order> {
-		return db.transaction(async (tx) => {
-			const [shopItem] = await tx
-				.select()
-				.from(shopItemsTable)
-				.where(and(eq(shopItemsTable.id, itemId), eq(shopItemsTable.isOrderable, true)))
-				.for('update');
-
-			if (!shopItem) {
-				throw new Error(`Item with ID ${itemId} not found or is not orderable.`);
-			}
-
-			if (shopItem.stock <= 0) {
-				throw new Error(`Not enough stock for item: ${shopItem.name}`);
-			}
-
-			const [newOrder] = await tx
-				.insert(ordersTable)
-				.values({
-					userId,
-					shopItemId: itemId,
-					status: 'pending'
-				})
-				.returning();
-
-			await tx
-				.update(shopItemsTable)
-				.set({
-					stock: shopItem.stock - 1
-				})
-				.where(eq(shopItemsTable.id, itemId));
-
-			await tx
-				.update(usersTable)
-				.set({
-					totalPoints: sql`${usersTable.totalPoints} - ${shopItem.price}`
-				})
-				.where(eq(usersTable.id, userId));
-
-			await tx.insert(pointTransactionsTable).values({
-				userId: userId,
-				amount: -shopItem.price,
-				reason: `Purchased item: ${shopItem.name}`,
-				authorId: userId
-			});
-
-			return newOrder;
-		});
+	async createOrder(data: CreateOrderData): Promise<Order> {
+		const [order] = await db.insert(ordersTable).values(data).returning();
+		return order;
 	}
 
 	async getOrders(): Promise<Order[]> {
@@ -99,6 +47,7 @@ export class PostgresShopRepo implements IShopRepo {
 		const orders = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
 		return orders[0] ?? null;
 	}
+
 	async getOrdersByUser(userId: number): Promise<Order[]> {
 		return await db.select().from(ordersTable).where(eq(ordersTable.userId, userId));
 	}

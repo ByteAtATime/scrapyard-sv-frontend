@@ -1,33 +1,25 @@
 import type { IAuthProvider } from '$lib/server/auth/types';
-import type { EndpointHandler } from '$lib/server/endpoints';
-import type { IShopRepo } from '$lib/server/shop';
+import type { IShopService } from '$lib/server/shop';
 import { z } from 'zod';
 
 export const postSchema = z.object({
 	itemId: z.number()
 });
 
-export const endpoint_POST: EndpointHandler<{
+export type OrderEndpointDeps = {
 	authProvider: IAuthProvider;
-	shopRepo: IShopRepo;
-	body: z.infer<typeof postSchema>;
-}> = async ({ authProvider, shopRepo, body }) => {
-	const userId = await authProvider.getUserId();
+	shopService: IShopService;
+	body: { itemId: number };
+};
 
-	if (!userId) {
-		return {
-			success: false,
-			error: 'Unauthorized'
-		};
+export const orderEndpoint = async ({ authProvider, shopService, body }: OrderEndpointDeps) => {
+	const user = await authProvider.getCurrentUser();
+
+	if (!user) {
+		throw new Error('Not authenticated');
 	}
 
-	try {
-		const order = await shopRepo.createOrder(userId, body.itemId);
-		return order;
-	} catch (error) {
-		return {
-			success: false,
-			error: error instanceof Error ? error.message : 'An unexpected error has occurred'
-		};
-	}
+	const order = await shopService.purchaseItem(user.id, body.itemId);
+
+	return { order };
 };
