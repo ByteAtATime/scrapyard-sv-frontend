@@ -1,83 +1,35 @@
-import type { IAuthProvider } from './types';
 import type { AuthObject } from '@clerk/backend';
-import { db } from '$lib/server/db';
-import { usersTable } from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
-import { clerkClient } from 'clerk-sveltekit/server';
-import { User } from './user';
+import type { IAuthProvider } from './types';
+import { ClerkAuthState } from './clerk-state';
+import { AuthService } from './service';
+import { PostgresUserRepository } from './postgres';
 
 export class ClerkAuthProvider implements IAuthProvider {
-	constructor(private auth: AuthObject) {}
+	private service: AuthService;
 
-	isAuthenticated() {
-		return !!this.auth.userId;
+	constructor(auth: AuthObject) {
+		const state = new ClerkAuthState(auth);
+		const repo = new PostgresUserRepository();
+		this.service = new AuthService(state, repo);
 	}
 
-	async getUserId() {
-		const clerkUserId = this.auth.userId;
-		if (!clerkUserId) return null;
-
-		const ids = await db
-			.select({ id: usersTable.id })
-			.from(usersTable)
-			.where(and(eq(usersTable.authProvider, 'clerk'), eq(usersTable.authProviderId, clerkUserId)))
-			.execute();
-
-		if (ids.length === 0) {
-			await this.createUserFromClerk(clerkUserId);
-			return null;
-		}
-
-		return ids[0].id;
+	isAuthenticated(): boolean {
+		return this.service.isAuthenticated();
 	}
 
-	async isOrganizer() {
-		const clerkUserId = this.auth.userId;
-		if (!clerkUserId) return false;
+	async getUserId(): Promise<number | null> {
+		return await this.service.getUserId();
+	}
 
-		const user = await db.query.usersTable.findFirst({
-			where: eq(usersTable.authProviderId, clerkUserId)
-		});
-
-		if (!user) {
-			await this.createUserFromClerk(clerkUserId);
-			return false;
-		}
-
-		return user.isOrganizer ?? false;
+	async isOrganizer(): Promise<boolean> {
+		return await this.service.isOrganizer();
 	}
 
 	async getCurrentUser() {
-		const clerkUserId = this.auth.userId;
-		if (!clerkUserId) return null;
-
-		const user = await db.query.usersTable.findFirst({
-			where: eq(usersTable.authProviderId, clerkUserId)
-		});
-
-		if (!user) {
-			await this.createUserFromClerk(clerkUserId);
-			return null;
-		}
-
-		return new User(user, this);
+		return await this.service.getCurrentUser();
 	}
 
 	async getUserById(id: number) {
-		const user = await db.query.usersTable.findFirst({
-			where: eq(usersTable.id, id)
-		});
-
-		return user ?? null;
-	}
-
-	private async createUserFromClerk(clerkUserId: string) {
-		const clerkUser = await clerkClient.users.getUser(clerkUserId);
-		await db.insert(usersTable).values({
-			name: clerkUser.fullName ?? clerkUser.firstName + ' ' + clerkUser.lastName,
-			email: clerkUser.emailAddresses[0].emailAddress,
-			authProvider: 'clerk',
-			authProviderId: clerkUserId
-		});
+		return await this.service.getUserById(id);
 	}
 }

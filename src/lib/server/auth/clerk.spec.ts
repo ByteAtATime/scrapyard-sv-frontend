@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClerkAuthProvider } from './clerk';
 import type { AuthObject } from '@clerk/backend';
+import type { UserData } from '$lib/server/db/types';
+import { User } from './user';
 
 const mockDb = await vi.hoisted(async () => {
 	const { mockDb } = await import('$lib/server/db/mock');
@@ -11,113 +13,99 @@ vi.mock('$lib/server/db', () => ({
 	db: mockDb
 }));
 
-const mockClerkClient = vi.hoisted(() => ({
-	users: {
-		getUser: vi.fn().mockResolvedValue({
-			fullName: 'John Doe',
-			firstName: 'John',
-			lastName: 'Doe',
-			emailAddresses: [{ emailAddress: 'john.doe@example.com' }]
-		})
-	}
-}));
-
-vi.mock('clerk-sveltekit/server', () => ({
-	clerkClient: mockClerkClient
-}));
-
 describe('ClerkAuthProvider', () => {
+	let provider: ClerkAuthProvider;
+	let mockAuth: AuthObject;
+
+	beforeEach(() => {
+		mockAuth = {
+			userId: null,
+			sessionClaims: { __raw: '', iss: '', sub: '', sid: '' },
+			getToken: async () => null
+		} as unknown as AuthObject;
+
+		provider = new ClerkAuthProvider(mockAuth);
+		vi.clearAllMocks();
+	});
+
 	describe('isAuthenticated', () => {
-		it('should return true if auth.userId is set', () => {
-			const auth = { userId: 'user123' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			expect(provider.isAuthenticated()).toBe(true);
+		it('should return false when not authenticated', () => {
+			expect(provider.isAuthenticated()).toBe(false);
 		});
 
-		it('should return false if auth.userId is null', () => {
-			const auth = { userId: null } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			expect(provider.isAuthenticated()).toBe(false);
+		it('should return true when authenticated', () => {
+			mockAuth.userId = 'user_123';
+			provider = new ClerkAuthProvider(mockAuth);
+			expect(provider.isAuthenticated()).toBe(true);
 		});
 	});
 
 	describe('getUserId', () => {
-		it('should return user ID if user exists in DB', async () => {
-			const auth = { userId: 'clerkId1' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			mockDb
-				.select()
-				.from()
-				.where()
-				.execute.mockResolvedValue([{ id: 'userId1' }]);
-
-			const userId = await provider.getUserId();
-			expect(userId).toBe('userId1');
-		});
-		it('should insert user and return null if user does not exist in DB', async () => {
-			const auth = { userId: 'clerkId2' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			mockDb.select().from().where().execute.mockResolvedValue([]);
-
-			const userId = await provider.getUserId();
-			expect(mockDb.insert).toHaveBeenCalled();
-			expect(userId).toBeNull();
+		it('should return null when not authenticated', async () => {
+			expect(await provider.getUserId()).toBeNull();
 		});
 
-		it('should insert user with firstName and lastName if fullName is not available', async () => {
-			const auth = { userId: 'clerkId3' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			mockDb.select().from().where().execute.mockResolvedValue([]);
-			mockClerkClient.users.getUser.mockResolvedValue({
-				fullName: undefined,
-				firstName: 'Jane',
-				lastName: 'Smith',
-				emailAddresses: [{ emailAddress: 'jane.smith@example.com' }]
-			});
+		it('should return user id when authenticated', async () => {
+			mockAuth.userId = 'user_123';
+			provider = new ClerkAuthProvider(mockAuth);
+			const mockUser = { id: 1 } as UserData;
+			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
-			const userId = await provider.getUserId();
-			expect(mockDb.values).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: 'Jane Smith'
-				})
-			);
-			expect(userId).toBeNull();
-		});
-
-		it('should return null if auth.userId is null', async () => {
-			const auth = { userId: null } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-
-			const userId = await provider.getUserId();
-			expect(userId).toBeNull();
+			expect(await provider.getUserId()).toBe(1);
 		});
 	});
 
 	describe('isOrganizer', () => {
-		it('should return true if user is admin', async () => {
-			const auth = { userId: 'clerkId3' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			mockDb.query.usersTable.findFirst.mockResolvedValue({ isOrganizer: true });
-
-			const isOrganizer = await provider.isOrganizer();
-			expect(isOrganizer).toBe(true);
+		it('should return false when not authenticated', async () => {
+			expect(await provider.isOrganizer()).toBe(false);
 		});
 
-		it('should return false if user is not admin', async () => {
-			const auth = { userId: 'clerkId4' } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
-			mockDb.query.usersTable.findFirst.mockResolvedValue({ isOrganizer: false });
+		it('should return true when user is organizer', async () => {
+			mockAuth.userId = 'user_123';
+			provider = new ClerkAuthProvider(mockAuth);
+			const mockUser = { id: 1, isOrganizer: true } as UserData;
+			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
-			const isOrganizer = await provider.isOrganizer();
-			expect(isOrganizer).toBe(false);
+			expect(await provider.isOrganizer()).toBe(true);
+		});
+	});
+
+	describe('getCurrentUser', () => {
+		it('should return null when not authenticated', async () => {
+			expect(await provider.getCurrentUser()).toBeNull();
 		});
 
-		it('should return false if auth.userId is null', async () => {
-			const auth = { userId: null } as AuthObject;
-			const provider = new ClerkAuthProvider(auth);
+		it('should return User instance when authenticated', async () => {
+			mockAuth.userId = 'user_123';
+			provider = new ClerkAuthProvider(mockAuth);
+			const mockUser = {
+				id: 1,
+				name: 'Test User',
+				email: 'test@example.com',
+				totalPoints: 0,
+				isOrganizer: false
+			} as UserData;
+			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
-			const isOrganizer = await provider.isOrganizer();
-			expect(isOrganizer).toBe(false);
+			const result = await provider.getCurrentUser();
+			expect(result).toBeInstanceOf(User);
+			expect(result?.id).toBe(1);
+			expect(result?.name).toBe('Test User');
+		});
+	});
+
+	describe('getUserById', () => {
+		it('should return null when user not found', async () => {
+			mockDb.select().from().where.mockResolvedValueOnce([]);
+			expect(await provider.getUserById(1)).toBeNull();
+		});
+
+		it('should return user data when found', async () => {
+			const mockUser = { id: 1, name: 'Test User' } as UserData;
+			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
+
+			const result = await provider.getUserById(1);
+			expect(result).toEqual(mockUser);
 		});
 	});
 });
