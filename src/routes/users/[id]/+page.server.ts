@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw error(403, 'Forbidden');
 	}
 
-	const rawTransactions = await pointsRepo.getTransactions();
+	const rawTransactions = await pointsRepo.getTransactionsByUser(id);
 	const transactionPromises = await Promise.allSettled(
 		rawTransactions
 			.filter((t: PointTransactionData) => t.status !== 'deleted')
