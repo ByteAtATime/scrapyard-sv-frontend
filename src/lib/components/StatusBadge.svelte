@@ -46,28 +46,26 @@
 {/snippet}
 
 {#if showTooltip && (reviewer || rejectionReason || status === 'pending')}
-	<Tooltip.Provider delayDuration={0}>
-		<Tooltip.Root>
-			<Tooltip.Trigger>
-				{@render badge()}
-			</Tooltip.Trigger>
-			<Tooltip.Content>
-				{#if reviewer}
-					<p class="text-muted-foreground">
-						Reviewed by <span class="text-foreground">{reviewer.name}</span>
-					</p>
-				{/if}
-				{#if status === 'rejected' && rejectionReason}
-					<p class="text-muted-foreground">
-						Rejection reason: <span class="text-foreground">{rejectionReason}</span>
-					</p>
-				{/if}
-				{#if status === 'pending'}
-					<p class="text-muted-foreground">This transaction is not final.</p>
-				{/if}
-			</Tooltip.Content>
-		</Tooltip.Root>
-	</Tooltip.Provider>
+	<Tooltip.Root>
+		<Tooltip.Trigger>
+			{@render badge()}
+		</Tooltip.Trigger>
+		<Tooltip.Content>
+			{#if reviewer}
+				<p class="text-muted-foreground">
+					Reviewed by <span class="text-foreground">{reviewer.name}</span>
+				</p>
+			{/if}
+			{#if status === 'rejected' && rejectionReason}
+				<p class="text-muted-foreground">
+					Rejection reason: <span class="text-foreground">{rejectionReason}</span>
+				</p>
+			{/if}
+			{#if status === 'pending'}
+				<p class="text-muted-foreground">This transaction is not final.</p>
+			{/if}
+		</Tooltip.Content>
+	</Tooltip.Root>
 {:else}
 	{@render badge()}
 {/if}
