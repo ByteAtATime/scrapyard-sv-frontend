@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { PointTransactionData } from '$lib/server/db/types';
 import type { IAuthProvider } from '../auth/types';
+import type { TransactionStatus } from './types';
 
 export const pointTransactionJsonSchema = z.object({
 	id: z.number(),
@@ -56,6 +57,10 @@ export class PointTransaction {
 		return this.data.amount;
 	}
 
+	public get status(): TransactionStatus {
+		return this.data.status;
+	}
+
 	public get reason(): string {
 		return this.data.reason;
 	}
@@ -64,11 +69,11 @@ export class PointTransaction {
 		return new Date(this.data.createdAt);
 	}
 
-	public toJson(): PointTransactionJson {
-		const user = this.authProvider.getUserById(this.userId);
-		const author = this.authProvider.getUserById(this.authorId);
+	public async toJson(): Promise<PointTransactionJson> {
+		const user = await this.authProvider.getUserById(this.userId);
+		const author = await this.authProvider.getUserById(this.authorId);
 		const reviewer = this.data.reviewerId
-			? this.authProvider.getUserById(this.data.reviewerId)
+			? await this.authProvider.getUserById(this.data.reviewerId)
 			: null;
 
 		return pointTransactionJsonSchema.parse({

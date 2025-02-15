@@ -1,5 +1,21 @@
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
+import type { transactionStatusEnum } from '../db/schema';
+
+export type TransactionStatus = (typeof transactionStatusEnum.enumValues)[number];
+
+export interface CreateTransactionData {
+	userId: number;
+	amount: number;
+	reason: string;
+	authorId: number;
+}
+
+export interface ReviewTransactionData {
+	reviewerId: number;
+	status: TransactionStatus;
+	rejectionReason?: string;
+}
 
 export interface ReviewTransactionResult {
 	success: boolean;
@@ -30,6 +46,25 @@ export interface IPointsRepo {
 	getTotalPoints(userId: number): Promise<number>;
 	getTransactions(): Promise<PointTransactionData[]>;
 	getTransactionsByUser(userId: number): Promise<PointTransactionData[]>;
-	reviewTransaction(options: ReviewTransactionOptions): Promise<ReviewTransactionResult>;
+	createTransaction(data: CreateTransactionData): Promise<PointTransactionData>;
+	reviewTransaction(
+		transactionId: number,
+		data: ReviewTransactionData
+	): Promise<PointTransactionData>;
+	getPendingTransactions(): Promise<PointTransactionData[]>;
+	getTransactionById(id: number): Promise<PointTransactionData | null>;
 	getPointsStatistics(): Promise<PointsStatistics>;
+}
+
+export interface IPointsService {
+	getTotalPoints(userId: number): Promise<number>;
+	getTransactions(): Promise<PointTransaction[]>;
+	getTransactionsByUser(userId: number): Promise<PointTransaction[]>;
+	createTransaction(data: CreateTransactionData): Promise<PointTransactionData>;
+	reviewTransaction(
+		transactionId: number,
+		data: ReviewTransactionData
+	): Promise<PointTransactionData>;
+	getPendingTransactions(): Promise<PointTransactionData[]>;
+	getTransactionById(id: number): Promise<PointTransactionData | null>;
 }

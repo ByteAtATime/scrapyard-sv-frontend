@@ -3,21 +3,26 @@ import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { zod } from 'sveltekit-superforms/adapters';
 import { approveSchema, rejectSchema, deleteSchema } from './schema';
-import { pointTransactionJsonSchema } from '$lib/server/points/transaction';
-import { z } from 'zod';
+import { PointsService, PostgresPointsRepo } from '$lib/server/points';
+import { ClerkAuthProvider } from '$lib/server/auth';
 
-export const load: PageServerLoad = async ({ fetch }) => {
-	const response = await fetch('/api/v1/points/transactions');
-	const transactions = z
-		.object({ data: z.array(pointTransactionJsonSchema) })
-		.parse(await response.json());
+export const load: PageServerLoad = async ({ locals }) => {
+	const pointRepo = new PostgresPointsRepo();
+	const authProvider = new ClerkAuthProvider(locals.auth);
+
+	const pointsService = new PointsService(pointRepo, authProvider);
+	const transactions = await pointsService.getTransactions();
 
 	const approveForm = await superValidate(zod(approveSchema));
 	const rejectForm = await superValidate(zod(rejectSchema));
 	const deleteForm = await superValidate(zod(deleteSchema));
 
+	const transactionsJson = await Promise.allSettled(transactions.map((t) => t.toJson()));
+
 	return {
-		transactions: transactions.data,
+		transactions: transactionsJson
+			.map((t) => (t.status === 'fulfilled' ? t.value : null))
+			.filter((t) => !!t),
 		approveForm,
 		rejectForm,
 		deleteForm
@@ -39,7 +44,7 @@ export const actions: Actions = {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					action: 'approve',
+					status: 'approved',
 					transactionId: form.data.id
 				})
 			});
@@ -80,9 +85,9 @@ export const actions: Actions = {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					action: 'reject',
+					status: 'rejected',
 					transactionId: form.data.id,
-					reason: form.data.reason
+					rejectionReason: form.data.reason
 				})
 			});
 
@@ -120,9 +125,8 @@ export const actions: Actions = {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					action: 'delete',
-					transactionId: form.data.id,
-					status: 'deleted'
+					status: 'deleted',
+					transactionId: form.data.id
 				})
 			});
 			const data = await response.json();

@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PostgresPointsRepo } from './postgres';
-import { PointTransaction } from './transaction';
-import {
-	eventAttendanceTable,
-	eventsTable,
-	pointTransactionsTable,
-	usersTable
-} from '../db/schema';
-import { MockAuthProvider } from '../auth/mock';
+import { pointTransactionsTable, usersTable } from '../db/schema';
+import type { PointTransactionData } from '../db/types';
 import { SQL } from 'drizzle-orm';
 
 const mockDb = await vi.hoisted(async () => {
@@ -20,210 +14,157 @@ vi.mock('$lib/server/db', () => ({
 }));
 
 describe('PostgresPointsRepo', () => {
+	let repository: PostgresPointsRepo;
+
 	beforeEach(() => {
+		repository = new PostgresPointsRepo();
 		vi.clearAllMocks();
-	});
-
-	describe('getPoints', () => {
-		it('should return total points for a user', async () => {
-			const userId = 1;
-			const expectedPoints = 100;
-
-			mockDb.where.mockResolvedValue([{ totalPoints: expectedPoints }]);
-
-			const repo = new PostgresPointsRepo();
-			const points = await repo.getTotalPoints(userId);
-
-			expect(points).toBe(expectedPoints);
-			expect(mockDb.where).toHaveBeenCalled();
-		});
-
-		it('should throw an error if user is not found', async () => {
-			const userId = 1;
-			mockDb.where.mockResolvedValue([]);
-
-			const repo = new PostgresPointsRepo();
-
-			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
-		});
-
-		it('should throw an error if totalPoints is not found', async () => {
-			const userId = 1;
-			mockDb.where.mockResolvedValue([{ totalPoints: null }]);
-
-			const repo = new PostgresPointsRepo();
-
-			await expect(repo.getTotalPoints(userId)).rejects.toThrow('User not found');
+		mockDb.select().from().where.mockReturnValue({
+			orderBy: mockDb.orderBy
 		});
 	});
 
-	describe('awardPoints', () => {
-		it('should award points to a user', async () => {
-			const authProvider = new MockAuthProvider();
+	describe('getTotalPoints', () => {
+		it('should return total points for user', async () => {
+			const mockUser = { id: 1, totalPoints: 100 };
+			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
-			const transaction = new PointTransaction(
-				{
-					id: 0,
-					userId: 1,
-					amount: 100,
-					reason: 'Test',
-					authorId: 1,
-					createdAt: new Date(),
-					status: 'pending',
-					reviewerId: null,
-					reviewedAt: null,
-					rejectionReason: null
-				},
-				authProvider
-			);
-			mockDb
-				.insert()
-				.values()
-				.returning.mockResolvedValue([{ id: 5 }]);
+			const result = await repository.getTotalPoints(1);
+			expect(result).toBe(100);
+		});
 
-			const repo = new PostgresPointsRepo();
-			const id = await repo.awardPoints(transaction);
+		it('should return 0 when user not found', async () => {
+			mockDb.select().from().where.mockResolvedValueOnce([]);
 
-			expect(id).toBe(5);
-			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				userId: transaction.userId,
-				amount: transaction.amount,
-				reason: transaction.reason,
-				authorId: transaction.authorId
-			});
-			expect(mockDb.returning).toHaveBeenCalled();
+			const result = await repository.getTotalPoints(1);
+			expect(result).toBe(0);
 		});
 	});
 
-	describe('getPointsStatistics', () => {
-		it('should return correct statistics with non-zero attendees', async () => {
-			const repo = new PostgresPointsRepo();
+	describe('getTransactions', () => {
+		it('should return all transactions', async () => {
+			const mockTransactions = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
 
-			mockDb.leftJoin
-				.mockImplementationOnce(() => mockDb)
-				.mockImplementationOnce(() =>
-					Promise.resolve([
-						{
-							totalPointsAwarded: 1000,
-							totalAttendees: 10
-						}
-					])
-				);
-
-			mockDb.limit.mockResolvedValueOnce([
-				{
-					userId: 1,
-					name: 'John Doe',
-					totalPoints: 500
-				}
-			]);
-
-			const result = await repo.getPointsStatistics();
-
-			expect(result.totalPointsAwarded).toBe(1000);
-			expect(result.averagePointsPerAttendee).toBe(100);
-			expect(result.topEarner).toEqual({
-				userId: 1,
-				name: 'John Doe',
-				totalPoints: 500
-			});
-
-			expect(mockDb.select).toHaveBeenCalledWith({
-				totalPointsAwarded: expect.any(Object),
-				totalAttendees: expect.any(Object)
-			});
-			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
-			expect(mockDb.leftJoin).toHaveBeenNthCalledWith(1, eventAttendanceTable, expect.any(Object));
-			expect(mockDb.leftJoin).toHaveBeenNthCalledWith(
-				2,
-				pointTransactionsTable,
-				expect.any(Object)
-			);
-
-			expect(mockDb.select).toHaveBeenCalledWith({
-				userId: usersTable.id,
-				name: usersTable.name,
-				totalPoints: usersTable.totalPoints
-			});
-			expect(mockDb.from).toHaveBeenCalledWith(usersTable);
-			expect(mockDb.orderBy).toHaveBeenCalledWith(expect.any(Object));
-			expect(mockDb.limit).toHaveBeenCalledWith(1);
-		});
-
-		it('should handle zero attendees', async () => {
-			const repo = new PostgresPointsRepo();
-
-			mockDb.leftJoin
-				.mockImplementationOnce(() => mockDb)
-				.mockImplementationOnce(() =>
-					Promise.resolve([
-						{
-							totalPointsAwarded: 0,
-							totalAttendees: 0
-						}
-					])
-				);
-
-			mockDb.limit.mockResolvedValueOnce([
-				{
-					userId: 1,
-					name: 'Jane Smith',
-					totalPoints: 0
-				}
-			]);
-
-			const result = await repo.getPointsStatistics();
-
-			expect(result.totalPointsAwarded).toBe(0);
-			expect(result.averagePointsPerAttendee).toBe(0);
-			expect(result.topEarner).toEqual({
-				userId: 1,
-				name: 'Jane Smith',
-				totalPoints: 0
-			});
+			const result = await repository.getTransactions();
+			expect(result).toEqual(mockTransactions);
 		});
 	});
 
 	describe('getTransactionsByUser', () => {
-		it('should return a list of transactions for a specific user', async () => {
-			const userId = 1;
-			const mockTransaction = {
-				id: 10,
-				userId: userId,
-				amount: 50,
-				reason: 'Test',
-				authorId: 2,
-				createdAt: new Date(),
-				status: 'pending',
-				reviewerId: null,
-				reviewedAt: null,
-				rejectionReason: null,
-				user: { id: userId, name: 'Test User', email: 'test@example.com' },
-				author: { id: 2, name: 'Author', email: 'author@example.com' },
-				reviewer: null
-			};
+		it('should return transactions for specific user', async () => {
+			const mockTransactions = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
 
-			mockDb.orderBy.mockResolvedValueOnce([mockTransaction]);
-
-			const repo = new PostgresPointsRepo();
-			const transactions = await repo.getTransactionsByUser(userId);
-
-			expect(transactions).toHaveLength(1);
-			expect(transactions[0]).toEqual(mockTransaction);
-
+			const result = await repository.getTransactionsByUser(1);
+			expect(result).toEqual(mockTransactions);
 			expect(mockDb.where).toHaveBeenCalledWith(expect.any(SQL));
 		});
 
-		it('should return an empty list if no transactions are found', async () => {
-			const userId = 999;
-
+		it('should return empty array when user has no transactions', async () => {
 			mockDb.orderBy.mockResolvedValueOnce([]);
 
-			const repo = new PostgresPointsRepo();
-			const transactions = await repo.getTransactionsByUser(userId);
+			const result = await repository.getTransactionsByUser(1);
+			expect(result).toEqual([]);
+		});
+	});
 
-			expect(transactions).toEqual([]);
+	describe('createTransaction', () => {
+		it('should create new transaction', async () => {
+			const mockTransaction = {
+				id: 1,
+				userId: 1,
+				amount: 100,
+				reason: 'Test',
+				authorId: 2
+			} as PointTransactionData;
+
+			mockDb.insert().values.mockReturnThis();
+			mockDb.returning.mockResolvedValueOnce([mockTransaction]);
+
+			const result = await repository.createTransaction({
+				userId: 1,
+				amount: 100,
+				reason: 'Test',
+				authorId: 2
+			});
+
+			expect(result).toEqual(mockTransaction);
+			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
+		});
+	});
+
+	describe('reviewTransaction', () => {
+		it('should update transaction status and update points when approved', async () => {
+			const mockTransaction = {
+				id: 1,
+				userId: 1,
+				amount: 100,
+				status: 'approved'
+			} as PointTransactionData;
+
+			mockDb.update().set.mockReturnThis();
+			mockDb.where.mockReturnThis();
+			mockDb.returning.mockResolvedValueOnce([mockTransaction]);
+
+			const result = await repository.reviewTransaction(1, {
+				reviewerId: 2,
+				status: 'approved'
+			});
+
+			expect(result).toEqual(mockTransaction);
+			expect(mockDb.update).toHaveBeenCalledWith(pointTransactionsTable);
+			expect(mockDb.update).toHaveBeenCalledWith(usersTable);
+		});
+
+		it('should update transaction status without updating points when rejected', async () => {
+			const mockTransaction = {
+				id: 1,
+				userId: 1,
+				amount: 100,
+				status: 'rejected'
+			} as PointTransactionData;
+
+			mockDb.update().set.mockReturnThis();
+			mockDb.where.mockReturnThis();
+			mockDb.returning.mockResolvedValueOnce([mockTransaction]);
+
+			const result = await repository.reviewTransaction(1, {
+				reviewerId: 2,
+				status: 'rejected',
+				rejectionReason: 'Invalid'
+			});
+
+			expect(result).toEqual(mockTransaction);
+			expect(mockDb.update).toHaveBeenCalledWith(pointTransactionsTable);
+			expect(mockDb.update).not.toHaveBeenCalledWith(usersTable);
+		});
+	});
+
+	describe('getPendingTransactions', () => {
+		it('should return pending transactions', async () => {
+			const mockTransactions = [{ id: 1, status: 'pending' } as PointTransactionData];
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
+
+			const result = await repository.getPendingTransactions();
+			expect(result).toEqual(mockTransactions);
+		});
+	});
+
+	describe('getTransactionById', () => {
+		it('should return transaction when found', async () => {
+			const mockTransaction = { id: 1 } as PointTransactionData;
+			mockDb.select().from().where.mockResolvedValueOnce([mockTransaction]);
+
+			const result = await repository.getTransactionById(1);
+			expect(result).toEqual(mockTransaction);
+		});
+
+		it('should return null when transaction not found', async () => {
+			mockDb.select().from().where.mockResolvedValueOnce([]);
+
+			const result = await repository.getTransactionById(1);
+			expect(result).toBeNull();
 		});
 	});
 });

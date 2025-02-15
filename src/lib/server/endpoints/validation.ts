@@ -21,6 +21,7 @@ export const withBodySchema = <TDeps extends { body: z.infer<TSchema> }, TSchema
 			const body = schema.parse(rawBody);
 			return next({ ...deps, body } as TDeps);
 		} catch (e) {
+			console.log(e);
 			if (e instanceof z.ZodError) {
 				return json(
 					{
@@ -62,6 +63,7 @@ export const withQuerySchema = <
 			const query = schema.parse(rawQuery);
 			return next({ ...deps, query } as TDeps);
 		} catch (e) {
+			console.log(e);
 			if (e instanceof z.ZodError) {
 				return json(
 					{
@@ -74,7 +76,6 @@ export const withQuerySchema = <
 					{ status: 400 }
 				);
 			}
-			console.log(e);
 			return json({ error: 'Internal server error' }, { status: 500 });
 		}
 	};

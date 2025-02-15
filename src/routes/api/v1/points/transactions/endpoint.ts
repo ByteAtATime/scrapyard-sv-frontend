@@ -14,6 +14,5 @@ export const endpoint_GET: EndpointHandler<{
 	}
 
 	const transactions = await pointsRepo.getTransactions();
-
 	return transactions;
 };

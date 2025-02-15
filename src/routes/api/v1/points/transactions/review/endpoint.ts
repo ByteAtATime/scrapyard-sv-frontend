@@ -3,22 +3,23 @@ import type { EndpointHandler } from '$lib/server/endpoints';
 import type { IPointsRepo } from '$lib/server/points/types';
 import { z } from 'zod';
 
-export const postSchema = z
-	.object({
-		transactionId: z.number().int(),
-		action: z.enum(['approve', 'reject', 'delete']),
-		reason: z.string().min(1).max(500).optional()
-	})
-	.refine((data) => !(data.action === 'reject' && !data.reason), {
-		message: 'Rejection reason is required when rejecting or deleting a transaction',
-		path: ['reason']
-	});
+export const postSchema = z.object({
+	transactionId: z.number(),
+	status: z.enum(['approved', 'rejected', 'deleted']),
+	rejectionReason: z.string().optional()
+});
 
-export const endpoint_POST: EndpointHandler<{
+type PostDeps = {
 	pointsRepo: IPointsRepo;
 	authProvider: IAuthProvider;
 	body: z.infer<typeof postSchema>;
-}> = async ({ pointsRepo, authProvider, body }) => {
+};
+
+export const endpoint_POST: EndpointHandler<PostDeps> = async ({
+	pointsRepo,
+	authProvider,
+	body
+}) => {
 	if (!(await authProvider.isOrganizer())) {
 		return {
 			success: false,
@@ -34,20 +35,11 @@ export const endpoint_POST: EndpointHandler<{
 		};
 	}
 
-	const result = await pointsRepo.reviewTransaction({
-		transactionId: body.transactionId,
+	const transaction = await pointsRepo.reviewTransaction(body.transactionId, {
 		reviewerId,
-		status:
-			body.action === 'approve' ? 'approved' : body.action === 'reject' ? 'rejected' : 'deleted',
-		rejectionReason: body.action === 'reject' ? body.reason : undefined
+		status: body.status,
+		rejectionReason: body.rejectionReason
 	});
 
-	if (!result.success) {
-		return {
-			success: false,
-			error: result.error
-		};
-	}
-
-	return { success: true };
+	return transaction;
 };

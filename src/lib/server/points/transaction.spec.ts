@@ -39,7 +39,7 @@ describe('PointTransaction', () => {
 		expect(transaction.createdAt).toEqual(new Date('2024-01-15T12:00:00Z'));
 	});
 
-	it('should correctly serialize to JSON', () => {
+	it('should correctly serialize to JSON', async () => {
 		const transaction = new PointTransaction(mockData, authProvider);
 
 		authProvider.getUserById.mockImplementation((id) => ({
@@ -48,7 +48,7 @@ describe('PointTransaction', () => {
 			email: `user${id}@example.com`
 		}));
 
-		const json = transaction.toJson();
+		const json = await transaction.toJson();
 		expect(json).toEqual({
 			...mockData,
 			user: {
