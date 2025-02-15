@@ -46,6 +46,7 @@
 				<div class="space-y-2">
 					<Label for="userId">User</Label>
 					<UserSelect bind:value={$form.userId} error={$errors.userId?.[0]} />
+					<input type="hidden" name="userId" bind:value={$form.userId} />
 				</div>
 
 				<div class="space-y-2">
