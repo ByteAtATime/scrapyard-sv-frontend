@@ -8,10 +8,11 @@ import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 
 export const load: PageServerLoad = async () => {
 	const items = await shopService.getAllItems(true);
+	const itemsJson = items.map((item) => item.toJson());
 
 	const purchaseForm = await superValidate(zod(purchaseSchema));
 
-	return { items, purchaseForm };
+	return { items: itemsJson, purchaseForm };
 };
 
 export const actions = {

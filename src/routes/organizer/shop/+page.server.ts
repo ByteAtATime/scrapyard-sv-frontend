@@ -7,12 +7,13 @@ import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async () => {
 	const items = await shopService.getAllItems();
+	const itemsJson = items.map((item) => item.toJson());
 
 	const createForm = await superValidate(zod(shopItemSchema));
 	const editForm = await superValidate(zod(editShopItemSchema));
 	const deleteForm = await superValidate(zod(deleteShopItemSchema));
 
-	return { items, createForm, editForm, deleteForm };
+	return { items: itemsJson, createForm, editForm, deleteForm };
 };
 
 export const actions = {

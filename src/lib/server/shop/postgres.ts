@@ -1,17 +1,27 @@
-import { eq } from 'drizzle-orm';
-import type { IShopRepo, Order, OrderStatus, CreateOrderData } from './types';
-import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
+import { eq, sql } from 'drizzle-orm';
+import type {
+	IShopRepo,
+	CreateShopItemData,
+	UpdateShopItemData,
+	CreateOrderData,
+	OrderStatus
+} from './types';
+import { ItemNotFoundError, ItemNotOrderableError, InsufficientStockError } from './types';
+import { ShopItem } from './shop-item';
+import { Order } from './order';
 import { db } from '../db';
-import { ordersTable, shopItemsTable } from '../db/schema';
+import { ordersTable, shopItemsTable, pointTransactionsTable, usersTable } from '../db/schema';
 
 export class PostgresShopRepository implements IShopRepo {
 	async getAllItems(): Promise<ShopItem[]> {
-		return await db.select().from(shopItemsTable).orderBy(shopItemsTable.id);
+		const items = await db.select().from(shopItemsTable).orderBy(shopItemsTable.id);
+		return items.map((item) => new ShopItem(item));
 	}
 
 	async getItemById(id: number): Promise<ShopItem | null> {
 		const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, id));
-		return items[0] ?? null;
+		const item = items[0];
+		return item ? new ShopItem(item) : null;
 	}
 
 	async updateStock(id: number, newStock: number): Promise<void> {
@@ -20,7 +30,7 @@ export class PostgresShopRepository implements IShopRepo {
 
 	async createItem(data: CreateShopItemData): Promise<ShopItem> {
 		const [item] = await db.insert(shopItemsTable).values(data).returning();
-		return item;
+		return new ShopItem(item);
 	}
 
 	async updateItem(id: number, data: UpdateShopItemData): Promise<void> {
@@ -36,23 +46,68 @@ export class PostgresShopRepository implements IShopRepo {
 
 	async createOrder(data: CreateOrderData): Promise<Order> {
 		const [order] = await db.insert(ordersTable).values(data).returning();
-		return order;
+		return new Order(order);
 	}
 
 	async getOrders(): Promise<Order[]> {
-		return await db.select().from(ordersTable);
+		const orders = await db.select().from(ordersTable);
+		return orders.map((order) => new Order(order));
 	}
 
 	async getOrderById(orderId: number): Promise<Order | null> {
 		const orders = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
-		return orders[0] ?? null;
+		const order = orders[0];
+		return order ? new Order(order) : null;
 	}
 
 	async getOrdersByUser(userId: number): Promise<Order[]> {
-		return await db.select().from(ordersTable).where(eq(ordersTable.userId, userId));
+		const orders = await db.select().from(ordersTable).where(eq(ordersTable.userId, userId));
+		return orders.map((order) => new Order(order));
 	}
 
 	async updateOrderStatus(orderId: number, status: OrderStatus): Promise<void> {
-		await db.update(ordersTable).set({ status: status }).where(eq(ordersTable.id, orderId));
+		await db.update(ordersTable).set({ status }).where(eq(ordersTable.id, orderId));
+	}
+
+	async purchaseItem(userId: number, itemId: number): Promise<Order> {
+		return db.transaction(async (tx) => {
+			const item = await this.getItemById(itemId);
+
+			if (!item) {
+				throw new ItemNotFoundError(itemId);
+			}
+
+			if (!item.isOrderable) {
+				throw new ItemNotOrderableError(itemId);
+			}
+
+			if (item.stock <= 0) {
+				throw new InsufficientStockError(item.name);
+			}
+
+			const order = await this.createOrder({
+				userId,
+				shopItemId: itemId,
+				status: 'pending'
+			});
+
+			await this.updateStock(itemId, item.stock - 1);
+
+			await tx
+				.update(usersTable)
+				.set({
+					totalPoints: sql`${usersTable.totalPoints} - ${item.price}`
+				})
+				.where(eq(usersTable.id, userId));
+
+			await tx.insert(pointTransactionsTable).values({
+				userId: userId,
+				amount: -item.price,
+				reason: `Purchased item: ${item.name}`,
+				authorId: userId
+			});
+
+			return order;
+		});
 	}
 }

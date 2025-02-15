@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Coins } from 'lucide-svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import type { ShopItem } from '$lib/server/shop';
+	import type { ShopItemJson } from '$lib/server/shop';
 	import { superForm } from 'sveltekit-superforms';
 	import { toast } from 'svelte-sonner';
 
@@ -26,7 +26,7 @@
 	);
 </script>
 
-{#snippet purchaseButton({ item }: { item: ShopItem })}
+{#snippet purchaseButton({ item }: { item: ShopItemJson })}
 	<Dialog.Root>
 		<Dialog.Trigger>
 			{#snippet child({ props })}

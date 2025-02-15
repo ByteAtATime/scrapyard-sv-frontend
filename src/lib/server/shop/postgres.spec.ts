@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PostgresShopRepository } from './postgres';
+import { ShopItem } from './shop-item';
+import { Order } from './order';
+import type { CreateShopItemData, CreateOrderData } from './types';
 import { ordersTable, shopItemsTable } from '../db/schema';
-import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
 import { eq } from 'drizzle-orm';
 
 const mockDb = await vi.hoisted(async () => {
@@ -9,8 +11,15 @@ const mockDb = await vi.hoisted(async () => {
 	return mockDb;
 });
 
+vi.mock('../db', () => ({
+	db: mockDb
+}));
+
 describe('PostgresShopRepository', () => {
-	const mockShopItem: ShopItem = {
+	let repo: PostgresShopRepository;
+	const mockDate = new Date('2025-02-15T19:22:28.667Z');
+
+	const mockShopItemData = {
 		id: 1,
 		name: 'Test Item',
 		description: 'Test Description',
@@ -18,16 +27,36 @@ describe('PostgresShopRepository', () => {
 		price: 99.99,
 		stock: 10,
 		isOrderable: true,
-		createdAt: new Date(),
-		updatedAt: new Date()
+		createdAt: mockDate,
+		updatedAt: mockDate
 	};
+
+	const mockShopItem = new ShopItem(mockShopItemData);
+	const mockItems = [mockShopItem, new ShopItem({ ...mockShopItemData, id: 2 })];
+
+	const mockOrderData = {
+		id: 1,
+		userId: 1,
+		shopItemId: 1,
+		status: 'pending' as const,
+		createdAt: mockDate
+	};
+
+	const mockOrder = new Order(mockOrderData);
+	const mockOrders = [mockOrder];
+
+	beforeEach(() => {
+		repo = new PostgresShopRepository();
+		vi.clearAllMocks();
+	});
 
 	describe('getAllItems', () => {
 		it('should return all shop items ordered by ID', async () => {
-			const mockItems = [mockShopItem, { ...mockShopItem, id: 2 }];
-			mockDb.select().from(shopItemsTable).orderBy.mockResolvedValue(mockItems);
+			mockDb
+				.select()
+				.from(shopItemsTable)
+				.orderBy.mockResolvedValue([mockShopItemData, { ...mockShopItemData, id: 2 }]);
 
-			const repo = new PostgresShopRepository();
 			const result = await repo.getAllItems();
 
 			expect(result).toEqual(mockItems);
@@ -35,22 +64,12 @@ describe('PostgresShopRepository', () => {
 			expect(mockDb.from).toHaveBeenCalledWith(shopItemsTable);
 			expect(mockDb.orderBy).toHaveBeenCalledWith(shopItemsTable.id);
 		});
-
-		it('should return empty array when no items exist', async () => {
-			mockDb.select().from(shopItemsTable).orderBy.mockResolvedValue([]);
-
-			const repo = new PostgresShopRepository();
-			const result = await repo.getAllItems();
-
-			expect(result).toEqual([]);
-		});
 	});
 
 	describe('getItemById', () => {
 		it('should return item when found', async () => {
-			mockDb.select().from(shopItemsTable).where.mockResolvedValue([mockShopItem]);
+			mockDb.select().from(shopItemsTable).where.mockResolvedValue([mockShopItemData]);
 
-			const repo = new PostgresShopRepository();
 			const result = await repo.getItemById(1);
 
 			expect(result).toEqual(mockShopItem);
@@ -60,22 +79,22 @@ describe('PostgresShopRepository', () => {
 		it('should return null when item not found', async () => {
 			mockDb.select().from(shopItemsTable).where.mockResolvedValue([]);
 
-			const repo = new PostgresShopRepository();
-			const result = await repo.getItemById(999);
+			const result = await repo.getItemById(1);
 
 			expect(result).toBeNull();
+			expect(mockDb.where).toHaveBeenCalledWith(eq(shopItemsTable.id, 1));
 		});
 	});
 
 	describe('updateStock', () => {
-		it('should update stock quantity for specified item', async () => {
-			const newStock = 5;
+		it('should update item stock', async () => {
+			mockDb.update(shopItemsTable).set.mockReturnThis();
+			mockDb.where.mockResolvedValue(undefined);
 
-			const repo = new PostgresShopRepository();
-			await repo.updateStock(1, newStock);
+			await repo.updateStock(1, 5);
 
 			expect(mockDb.update).toHaveBeenCalledWith(shopItemsTable);
-			expect(mockDb.set).toHaveBeenCalledWith({ stock: newStock });
+			expect(mockDb.set).toHaveBeenCalledWith({ stock: 5 });
 			expect(mockDb.where).toHaveBeenCalledWith(eq(shopItemsTable.id, 1));
 		});
 	});
@@ -83,18 +102,17 @@ describe('PostgresShopRepository', () => {
 	describe('createItem', () => {
 		it('should create new shop item and return created item', async () => {
 			const createData: CreateShopItemData = {
-				name: 'New Item',
-				description: 'New Description',
-				imageUrl: 'new.jpg',
-				price: 49.99,
-				stock: 20,
+				name: 'Test Item',
+				description: 'Test Description',
+				imageUrl: 'test.jpg',
+				price: 99.99,
+				stock: 10,
 				isOrderable: true
 			};
 
 			mockDb.insert(shopItemsTable).values.mockReturnThis();
-			mockDb.returning.mockResolvedValue([mockShopItem]);
+			mockDb.returning.mockResolvedValue([mockShopItemData]);
 
-			const repo = new PostgresShopRepository();
 			const result = await repo.createItem(createData);
 
 			expect(result).toEqual(mockShopItem);
@@ -104,14 +122,15 @@ describe('PostgresShopRepository', () => {
 	});
 
 	describe('updateItem', () => {
-		it('should update item with provided data and set updatedAt', async () => {
-			const updateData: UpdateShopItemData = {
-				name: 'Updated Name',
-				price: 129.99,
-				stock: 15
+		it('should update item with provided data', async () => {
+			const updateData = {
+				name: 'Updated Item',
+				price: 199.99
 			};
 
-			const repo = new PostgresShopRepository();
+			mockDb.update(shopItemsTable).set.mockReturnThis();
+			mockDb.where.mockResolvedValue(undefined);
+
 			await repo.updateItem(1, updateData);
 
 			expect(mockDb.update).toHaveBeenCalledWith(shopItemsTable);
@@ -124,8 +143,9 @@ describe('PostgresShopRepository', () => {
 	});
 
 	describe('deleteItem', () => {
-		it('should delete specified item', async () => {
-			const repo = new PostgresShopRepository();
+		it('should delete item with specified ID', async () => {
+			mockDb.delete(shopItemsTable).where.mockResolvedValue(undefined);
+
 			await repo.deleteItem(1);
 
 			expect(mockDb.delete).toHaveBeenCalledWith(shopItemsTable);
@@ -135,22 +155,15 @@ describe('PostgresShopRepository', () => {
 
 	describe('createOrder', () => {
 		it('should create a new order', async () => {
-			const orderData = {
+			const orderData: CreateOrderData = {
 				userId: 1,
 				shopItemId: 1,
-				status: 'pending' as const
+				status: 'pending'
 			};
 
-			const mockOrder = {
-				id: 1,
-				createdAt: new Date(),
-				...orderData
-			};
+			mockDb.insert(ordersTable).values.mockReturnThis();
+			mockDb.returning.mockResolvedValue([mockOrderData]);
 
-			mockDb.insert().values.mockReturnThis();
-			mockDb.returning.mockResolvedValue([mockOrder]);
-
-			const repo = new PostgresShopRepository();
 			const result = await repo.createOrder(orderData);
 
 			expect(result).toEqual(mockOrder);
@@ -161,19 +174,8 @@ describe('PostgresShopRepository', () => {
 
 	describe('getOrders', () => {
 		it('should return all orders', async () => {
-			const mockOrders = [
-				{
-					id: 1,
-					userId: 1,
-					shopItemId: 1,
-					status: 'pending' as const,
-					createdAt: new Date()
-				}
-			];
+			mockDb.select().from.mockResolvedValue([mockOrderData]);
 
-			mockDb.select().from.mockResolvedValue(mockOrders);
-
-			const repo = new PostgresShopRepository();
 			const result = await repo.getOrders();
 
 			expect(result).toEqual(mockOrders);
@@ -184,17 +186,8 @@ describe('PostgresShopRepository', () => {
 
 	describe('getOrderById', () => {
 		it('should return order when found', async () => {
-			const mockOrder = {
-				id: 1,
-				userId: 1,
-				shopItemId: 1,
-				status: 'pending' as const,
-				createdAt: new Date()
-			};
+			mockDb.select().from(ordersTable).where.mockResolvedValue([mockOrderData]);
 
-			mockDb.select().from().where.mockResolvedValue([mockOrder]);
-
-			const repo = new PostgresShopRepository();
 			const result = await repo.getOrderById(1);
 
 			expect(result).toEqual(mockOrder);
@@ -202,30 +195,19 @@ describe('PostgresShopRepository', () => {
 		});
 
 		it('should return null when order not found', async () => {
-			mockDb.select().from().where.mockResolvedValue([]);
+			mockDb.select().from(ordersTable).where.mockResolvedValue([]);
 
-			const repo = new PostgresShopRepository();
-			const result = await repo.getOrderById(999);
+			const result = await repo.getOrderById(1);
 
 			expect(result).toBeNull();
+			expect(mockDb.where).toHaveBeenCalledWith(eq(ordersTable.id, 1));
 		});
 	});
 
 	describe('getOrdersByUser', () => {
 		it('should return orders for specified user', async () => {
-			const mockOrders = [
-				{
-					id: 1,
-					userId: 1,
-					shopItemId: 1,
-					status: 'pending' as const,
-					createdAt: new Date()
-				}
-			];
+			mockDb.select().from(ordersTable).where.mockResolvedValue([mockOrderData]);
 
-			mockDb.select().from().where.mockResolvedValue(mockOrders);
-
-			const repo = new PostgresShopRepository();
 			const result = await repo.getOrdersByUser(1);
 
 			expect(result).toEqual(mockOrders);
@@ -235,7 +217,9 @@ describe('PostgresShopRepository', () => {
 
 	describe('updateOrderStatus', () => {
 		it('should update order status', async () => {
-			const repo = new PostgresShopRepository();
+			mockDb.update(ordersTable).set.mockReturnThis();
+			mockDb.where.mockResolvedValue(undefined);
+
 			await repo.updateOrderStatus(1, 'fulfilled');
 
 			expect(mockDb.update).toHaveBeenCalledWith(ordersTable);

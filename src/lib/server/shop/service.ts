@@ -1,8 +1,13 @@
-import type { IShopService, IShopRepo, Order, OrderStatus } from './types';
-import type { ShopItem, CreateShopItemData, UpdateShopItemData } from './types';
-import { db } from '../db';
-import { eq, sql } from 'drizzle-orm';
-import { pointTransactionsTable, usersTable } from '../db/schema';
+import type {
+	IShopService,
+	IShopRepo,
+	CreateShopItemData,
+	UpdateShopItemData,
+	OrderStatus
+} from './types';
+import { ItemNotFoundError, OrderNotFoundError } from './types';
+import { ShopItem } from './shop-item';
+import { Order } from './order';
 
 export class ShopService implements IShopService {
 	constructor(private readonly repository: IShopRepo) {}
@@ -15,8 +20,12 @@ export class ShopService implements IShopService {
 		return items;
 	}
 
-	async getItemById(id: number): Promise<ShopItem | null> {
-		return await this.repository.getItemById(id);
+	async getItemById(id: number): Promise<ShopItem> {
+		const item = await this.repository.getItemById(id);
+		if (!item) {
+			throw new ItemNotFoundError(id);
+		}
+		return item;
 	}
 
 	async createItem(data: CreateShopItemData): Promise<ShopItem> {
@@ -24,61 +33,35 @@ export class ShopService implements IShopService {
 	}
 
 	async updateItem(id: number, data: UpdateShopItemData): Promise<void> {
+		const item = await this.repository.getItemById(id);
+		if (!item) {
+			throw new ItemNotFoundError(id);
+		}
 		await this.repository.updateItem(id, data);
 	}
 
 	async deleteItem(id: number): Promise<void> {
+		const item = await this.repository.getItemById(id);
+		if (!item) {
+			throw new ItemNotFoundError(id);
+		}
 		await this.repository.deleteItem(id);
 	}
 
 	async purchaseItem(userId: number, itemId: number): Promise<Order> {
-		return db.transaction(async (tx) => {
-			const item = await this.repository.getItemById(itemId);
-
-			if (!item) {
-				throw new Error(`Item with ID ${itemId} not found.`);
-			}
-
-			if (!item.isOrderable) {
-				throw new Error(`Item with ID ${itemId} is not orderable.`);
-			}
-
-			if (item.stock <= 0) {
-				throw new Error(`Not enough stock for item: ${item.name}`);
-			}
-
-			const order = await this.repository.createOrder({
-				userId,
-				shopItemId: itemId,
-				status: 'pending'
-			});
-
-			await this.repository.updateStock(itemId, item.stock - 1);
-
-			await tx
-				.update(usersTable)
-				.set({
-					totalPoints: sql`${usersTable.totalPoints} - ${item.price}`
-				})
-				.where(eq(usersTable.id, userId));
-
-			await tx.insert(pointTransactionsTable).values({
-				userId: userId,
-				amount: -item.price,
-				reason: `Purchased item: ${item.name}`,
-				authorId: userId
-			});
-
-			return order;
-		});
+		return await this.repository.purchaseItem(userId, itemId);
 	}
 
 	async getOrders(): Promise<Order[]> {
 		return await this.repository.getOrders();
 	}
 
-	async getOrderById(orderId: number): Promise<Order | null> {
-		return await this.repository.getOrderById(orderId);
+	async getOrderById(orderId: number): Promise<Order> {
+		const order = await this.repository.getOrderById(orderId);
+		if (!order) {
+			throw new OrderNotFoundError(orderId);
+		}
+		return order;
 	}
 
 	async getOrdersByUser(userId: number): Promise<Order[]> {
@@ -86,6 +69,13 @@ export class ShopService implements IShopService {
 	}
 
 	async updateOrderStatus(orderId: number, status: OrderStatus): Promise<void> {
+		const order = await this.repository.getOrderById(orderId);
+		if (!order) {
+			throw new OrderNotFoundError(orderId);
+		}
+		if (!order.canBeUpdated()) {
+			throw new Error(`Order ${orderId} cannot be updated because it is ${order.status}`);
+		}
 		await this.repository.updateOrderStatus(orderId, status);
 	}
 }

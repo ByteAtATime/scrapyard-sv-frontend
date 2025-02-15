@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { type IShopRepo } from './types';
+import type { IShopRepo } from './types';
 
 export class MockShopRepo implements IShopRepo {
 	getAllItems = vi.fn();
@@ -13,4 +13,5 @@ export class MockShopRepo implements IShopRepo {
 	getOrdersByUser = vi.fn();
 	createOrder = vi.fn();
 	updateOrderStatus = vi.fn();
+	purchaseItem = vi.fn();
 }
