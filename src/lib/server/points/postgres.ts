@@ -24,7 +24,7 @@ export class PostgresPointsRepo implements IPointsRepo {
 				amount: transaction.amount,
 				reason: transaction.reason,
 				authorId: transaction.authorId,
-				status: 'approved'
+				status: 'pending'
 			})
 			.returning({ id: pointTransactionsTable.id });
 
