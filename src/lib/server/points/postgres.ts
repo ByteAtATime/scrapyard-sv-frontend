@@ -5,7 +5,8 @@ import type {
 	IPointsRepo,
 	PointsStatistics,
 	CreateTransactionData,
-	ReviewTransactionData
+	ReviewTransactionData,
+	LeaderboardEntry
 } from './types';
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
@@ -117,5 +118,35 @@ export class PostgresPointsRepo implements IPointsRepo {
 				totalPoints: topEarner?.totalPoints ?? 0
 			}
 		};
+	}
+
+	async getLeaderboard(): Promise<LeaderboardEntry[]> {
+		const rawLeaderboard = await db
+			.select({
+				userId: usersTable.id,
+				name: usersTable.name,
+				totalPoints: sql<number>`COALESCE((SELECT SUM(${pointTransactionsTable.amount}) FROM ${pointTransactionsTable} WHERE ${pointTransactionsTable.userId} = ${usersTable.id} AND ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted')), 0)`
+			})
+			.from(usersTable);
+
+		// Map raw results to LeaderboardEntry objects with an empty transactions array
+		const leaderboard: LeaderboardEntry[] = rawLeaderboard.map((user) => ({
+			...user,
+			transactions: []
+		}));
+
+		await Promise.all(
+			leaderboard.map(async (user) => {
+				const transactions = await db
+					.select()
+					.from(pointTransactionsTable)
+					.where(eq(pointTransactionsTable.userId, user.userId));
+				user.transactions = transactions;
+			})
+		);
+
+		// Sort in descending order by totalPoints
+		leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
+		return leaderboard;
 	}
 }

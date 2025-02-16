@@ -11,4 +11,5 @@ export class MockPointsRepo implements IPointsRepo {
 	getPendingTransactions = vi.fn();
 	getTransactionById = vi.fn();
 	getPointsStatistics = vi.fn();
+	getLeaderboard = vi.fn();
 }

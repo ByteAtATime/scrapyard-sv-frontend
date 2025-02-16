@@ -4,6 +4,7 @@ import type { IPointsRepo } from './types';
 import type { PointTransactionData } from '../db/types';
 import { MockAuthProvider } from '../auth/mock';
 import { PointTransaction } from './transaction';
+import { MockPointsRepo } from './mock';
 
 describe('PointsService', () => {
 	let mockRepo: IPointsRepo;
@@ -11,17 +12,7 @@ describe('PointsService', () => {
 	let service: PointsService;
 
 	beforeEach(() => {
-		mockRepo = {
-			getTotalPoints: vi.fn(),
-			getTransactions: vi.fn(),
-			createTransaction: vi.fn(),
-			reviewTransaction: vi.fn(),
-			getPendingTransactions: vi.fn(),
-			getTransactionById: vi.fn(),
-			awardPoints: vi.fn(),
-			getPointsStatistics: vi.fn(),
-			getTransactionsByUser: vi.fn()
-		};
+		mockRepo = new MockPointsRepo();
 
 		mockAuthProvider = new MockAuthProvider();
 		service = new PointsService(mockRepo, mockAuthProvider);

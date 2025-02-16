@@ -35,6 +35,13 @@ export interface TopPointEarner {
 	totalPoints: number;
 }
 
+export interface LeaderboardEntry {
+	userId: number;
+	name: string;
+	totalPoints: number;
+	transactions: PointTransactionData[];
+}
+
 export interface PointsStatistics {
 	totalPointsAwarded: number;
 	averagePointsPerAttendee: number;
@@ -54,6 +61,7 @@ export interface IPointsRepo {
 	getPendingTransactions(): Promise<PointTransactionData[]>;
 	getTransactionById(id: number): Promise<PointTransactionData | null>;
 	getPointsStatistics(): Promise<PointsStatistics>;
+	getLeaderboard(): Promise<LeaderboardEntry[]>;
 }
 
 export interface IPointsService {
