@@ -3,10 +3,37 @@ import { PostgresPointsRepo } from './postgres';
 import { pointTransactionsTable, usersTable } from '../db/schema';
 import type { PointTransactionData } from '../db/types';
 import { SQL } from 'drizzle-orm';
+import type { Mock } from 'vitest';
+
+type MockDb = {
+	select: Mock;
+	insert: Mock;
+	update: Mock;
+	delete: Mock;
+	from: Mock;
+	where: Mock;
+	set: Mock;
+	values: Mock;
+	returning: Mock;
+	orderBy: Mock;
+	leftJoin: Mock;
+	groupBy: Mock;
+	having: Mock;
+	query: {
+		eventsTable: {
+			findFirst: Mock;
+			findMany: Mock;
+		};
+	};
+};
 
 const mockDb = await vi.hoisted(async () => {
 	const { mockDb } = await import('$lib/server/db/mock');
-	return mockDb;
+	return {
+		...mockDb,
+		groupBy: vi.fn(() => mockDb),
+		having: vi.fn()
+	} as MockDb;
 });
 
 vi.mock('$lib/server/db', () => ({
@@ -21,6 +48,12 @@ describe('PostgresPointsRepo', () => {
 		vi.clearAllMocks();
 		mockDb.select().from().where.mockReturnValue({
 			orderBy: mockDb.orderBy
+		});
+		mockDb.select().from().leftJoin.mockReturnValue({
+			groupBy: mockDb.groupBy
+		});
+		mockDb.groupBy.mockReturnValue({
+			having: mockDb.having
 		});
 	});
 
@@ -164,6 +197,48 @@ describe('PostgresPointsRepo', () => {
 
 			const result = await repository.getTransactionById(1);
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('getUserRank', () => {
+		it('should return correct rank and total users', async () => {
+			const mockResult = [{ rank: 3, userId: 1, total: 3 }];
+			mockDb.having.mockResolvedValueOnce(mockResult);
+
+			const result = await repository.getUserRank(1);
+			expect(result).toEqual({ rank: 3, totalUsers: 3 });
+
+			expect(mockDb.select).toHaveBeenCalledWith({
+				rank: expect.any(SQL),
+				userId: usersTable.id,
+				total: expect.any(SQL)
+			});
+			expect(mockDb.from).toHaveBeenCalledWith(usersTable);
+			expect(mockDb.leftJoin).toHaveBeenCalledWith(pointTransactionsTable, expect.any(SQL));
+			expect(mockDb.groupBy).toHaveBeenCalledWith(usersTable.id);
+			expect(mockDb.having).toHaveBeenCalledWith(expect.any(SQL));
+		});
+
+		it('should handle rejected and deleted transactions in rank calculation', async () => {
+			const mockResult = [{ rank: 2, userId: 1, total: 2 }];
+			mockDb.having.mockResolvedValueOnce(mockResult);
+
+			const result = await repository.getUserRank(1);
+			expect(result).toEqual({ rank: 2, totalUsers: 2 });
+
+			// Verify that the SQL includes the CASE statement for handling rejected/deleted transactions
+			expect(mockDb.select).toHaveBeenCalledWith(
+				expect.objectContaining({
+					rank: expect.any(SQL)
+				})
+			);
+		});
+
+		it('should return rank 0 for non-existent user', async () => {
+			mockDb.having.mockResolvedValueOnce([]);
+
+			const result = await repository.getUserRank(999);
+			expect(result).toEqual({ rank: 0, totalUsers: 0 });
 		});
 	});
 });

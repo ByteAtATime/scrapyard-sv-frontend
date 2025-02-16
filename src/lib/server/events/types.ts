@@ -7,6 +7,17 @@ export interface EventStatistics {
 	averageAttendancePerEvent: number;
 }
 
+export interface UserEventStatistics {
+	totalEventsAttended: number;
+	attendanceRate: number;
+}
+
+export interface UpcomingEvent {
+	id: number;
+	name: string;
+	startTime: Date;
+}
+
 export interface IEventsRepo {
 	createEvent(event: Event): Promise<number>;
 	getEventById(id: number): Promise<EventData | null>;
@@ -17,4 +28,6 @@ export interface IEventsRepo {
 	getAttendanceByEvent(eventId: number): Promise<EventAttendanceData[]>;
 	getAttendanceByUser(userId: number): Promise<EventAttendanceData[]>;
 	getEventStatistics(): Promise<EventStatistics>;
+	getUpcomingEvents(userId: number): Promise<UpcomingEvent[]>;
+	getUserEventStatistics(userId: number): Promise<UserEventStatistics>;
 }

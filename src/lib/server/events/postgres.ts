@@ -1,9 +1,10 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import type { EventData, EventAttendanceData } from '../db/types';
-import type { IEventsRepo, EventStatistics } from './types';
+import type { IEventsRepo, EventStatistics, UpcomingEvent, UserEventStatistics } from './types';
 import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
 import type { Event } from './event';
+import { and, gt } from 'drizzle-orm';
 
 export class PostgresEventsRepo implements IEventsRepo {
 	async createEvent(event: Event): Promise<number> {
@@ -100,6 +101,49 @@ export class PostgresEventsRepo implements IEventsRepo {
 			totalEvents,
 			totalAttendees: Number(stats.totalAttendees),
 			averageAttendancePerEvent: totalEvents > 0 ? Number(stats.totalAttendance) / totalEvents : 0
+		};
+	}
+
+	async getUpcomingEvents(userId: number): Promise<UpcomingEvent[]> {
+		return await db
+			.select({
+				id: eventsTable.id,
+				name: eventsTable.name,
+				startTime: eventsTable.time
+			})
+			.from(eventsTable)
+			.leftJoin(
+				eventAttendanceTable,
+				and(
+					eq(eventAttendanceTable.eventId, eventsTable.id),
+					eq(eventAttendanceTable.userId, userId)
+				)
+			)
+			.where(and(gt(eventsTable.time, new Date()), sql`${eventAttendanceTable.eventId} IS NULL`))
+			.orderBy(eventsTable.time)
+			.limit(3);
+	}
+
+	async getUserEventStatistics(userId: number): Promise<UserEventStatistics> {
+		const stats = await db
+			.select({
+				totalEvents: sql<number>`COUNT(DISTINCT ${eventsTable.id})`,
+				totalAttended: sql<number>`COUNT(DISTINCT ${eventAttendanceTable.eventId})`
+			})
+			.from(eventsTable)
+			.leftJoin(
+				eventAttendanceTable,
+				and(
+					eq(eventAttendanceTable.eventId, eventsTable.id),
+					eq(eventAttendanceTable.userId, userId)
+				)
+			);
+
+		const { totalEvents, totalAttended } = stats[0];
+
+		return {
+			totalEventsAttended: totalAttended ?? 0,
+			attendanceRate: totalEvents > 0 ? (totalAttended ?? 0) / totalEvents : 0
 		};
 	}
 }

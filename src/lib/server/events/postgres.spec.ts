@@ -1,13 +1,33 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PostgresEventsRepo } from './postgres';
 import { Event } from './event';
-import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
+import {
+	eventAttendanceTable,
+	eventsTable,
+	pointTransactionsTable,
+	usersTable
+} from '../db/schema';
 import { MockAuthProvider } from '../auth/mock';
-import { mockDb } from '../db/mock';
 import type { EventData } from '../db/types';
 import { SQL } from 'drizzle-orm';
 
+const mockDb = await vi.hoisted(async () => {
+	const { mockDb } = await import('../db/mock');
+	return mockDb;
+});
+
+vi.mock('../db', () => ({
+	db: mockDb
+}));
+
 describe('PostgresEventsRepo', () => {
+	let repo: PostgresEventsRepo;
+
+	beforeEach(async () => {
+		repo = new PostgresEventsRepo();
+		vi.clearAllMocks();
+	});
+
 	describe('createEvent', () => {
 		it('should create a new event and return its ID', async () => {
 			const authProvider = new MockAuthProvider();
@@ -26,7 +46,6 @@ describe('PostgresEventsRepo', () => {
 			mockDb.returning.mockResolvedValue([{ id: 42 }]);
 			authProvider.getUserById.mockResolvedValue({ id: 1, name: 'Organizer' });
 
-			const repo = new PostgresEventsRepo();
 			const eventId = await repo.createEvent(event);
 
 			expect(eventId).toBe(42);
@@ -56,7 +75,6 @@ describe('PostgresEventsRepo', () => {
 			);
 			mockDb.returning.mockResolvedValue([{ id: 43 }]);
 
-			const repo = new PostgresEventsRepo();
 			await repo.createEvent(event);
 
 			expect(mockDb.values).toHaveBeenCalledWith(
@@ -80,7 +98,6 @@ describe('PostgresEventsRepo', () => {
 			};
 			mockDb.query.eventsTable.findFirst.mockResolvedValue(expectedEvent);
 
-			const repo = new PostgresEventsRepo();
 			const event = await repo.getEventById(eventId);
 
 			expect(event).toEqual(expectedEvent);
@@ -93,7 +110,6 @@ describe('PostgresEventsRepo', () => {
 			const eventId = 999;
 			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
 
-			const repo = new PostgresEventsRepo();
 			const event = await repo.getEventById(eventId);
 
 			expect(event).toBeNull();
@@ -125,7 +141,6 @@ describe('PostgresEventsRepo', () => {
 			];
 			mockDb.query.eventsTable.findMany.mockResolvedValue(expectedEvents);
 
-			const repo = new PostgresEventsRepo();
 			const events = await repo.getEvents();
 
 			expect(events).toEqual(expectedEvents);
@@ -135,7 +150,6 @@ describe('PostgresEventsRepo', () => {
 		it('should return an empty array if no events exist', async () => {
 			mockDb.query.eventsTable.findMany.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			const events = await repo.getEvents();
 
 			expect(events).toEqual([]);
@@ -153,7 +167,6 @@ describe('PostgresEventsRepo', () => {
 			});
 			mockDb.update(eventsTable).set(updates).where.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			await repo.updateEvent(eventId, updates);
 
 			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
@@ -169,7 +182,6 @@ describe('PostgresEventsRepo', () => {
 			const updates = { description: 'Updated description' };
 			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
 
-			const repo = new PostgresEventsRepo();
 			await expect(repo.updateEvent(eventId, updates)).rejects.toThrow('Event not found');
 			expect(mockDb.update).not.toHaveBeenCalled();
 		});
@@ -192,7 +204,6 @@ describe('PostgresEventsRepo', () => {
 			mockDb.query.eventsTable.findFirst.mockResolvedValue(eventData);
 			mockDb.values.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			await repo.checkInUser(eventId, userId, authorId);
 
 			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
@@ -233,7 +244,6 @@ describe('PostgresEventsRepo', () => {
 			mockDb.transaction.mockImplementation(async (cb) => await cb(mockDb));
 			mockDb.values.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			await repo.checkInUser(eventId, userId, authorId);
 
 			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
@@ -256,7 +266,6 @@ describe('PostgresEventsRepo', () => {
 			const authorId = 203;
 			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
 
-			const repo = new PostgresEventsRepo();
 			await expect(repo.checkInUser(eventId, userId, authorId)).rejects.toThrow('Event not found');
 			expect(mockDb.transaction).not.toHaveBeenCalled();
 		});
@@ -271,7 +280,6 @@ describe('PostgresEventsRepo', () => {
 			];
 			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue(expectedAttendance);
 
-			const repo = new PostgresEventsRepo();
 			const attendance = await repo.getAttendanceByEvent(eventId);
 
 			expect(attendance).toEqual(expectedAttendance);
@@ -284,7 +292,6 @@ describe('PostgresEventsRepo', () => {
 			const eventId = 999;
 			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			const attendance = await repo.getAttendanceByEvent(eventId);
 
 			expect(attendance).toEqual([]);
@@ -303,7 +310,6 @@ describe('PostgresEventsRepo', () => {
 			];
 			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue(expectedAttendance);
 
-			const repo = new PostgresEventsRepo();
 			const attendance = await repo.getAttendanceByUser(userId);
 
 			expect(attendance).toEqual(expectedAttendance);
@@ -316,7 +322,6 @@ describe('PostgresEventsRepo', () => {
 			const userId = 999;
 			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue([]);
 
-			const repo = new PostgresEventsRepo();
 			const attendance = await repo.getAttendanceByUser(userId);
 
 			expect(attendance).toEqual([]);
@@ -328,8 +333,6 @@ describe('PostgresEventsRepo', () => {
 
 	describe('getEventStatistics', () => {
 		it('should return correct statistics when there are events', async () => {
-			const repo = new PostgresEventsRepo();
-
 			mockDb.leftJoin.mockImplementationOnce(() =>
 				Promise.resolve([
 					{
@@ -358,8 +361,6 @@ describe('PostgresEventsRepo', () => {
 		});
 
 		it('should handle zero events without division errors', async () => {
-			const repo = new PostgresEventsRepo();
-
 			mockDb.leftJoin.mockImplementationOnce(() =>
 				Promise.resolve([
 					{
@@ -377,6 +378,106 @@ describe('PostgresEventsRepo', () => {
 				totalAttendees: 0,
 				averageAttendancePerEvent: 0
 			});
+		});
+	});
+
+	describe('getUpcomingEvents', () => {
+		it('should return upcoming events that user has not attended', async () => {
+			const now = new Date();
+			const futureDate1 = new Date(now.getTime() + 24 * 60 * 60 * 1000); // tomorrow
+			const futureDate2 = new Date(now.getTime() + 48 * 60 * 60 * 1000); // day after tomorrow
+
+			const mockEvents = [
+				{
+					id: 1,
+					name: 'Future Event 1',
+					startTime: futureDate1
+				},
+				{
+					id: 2,
+					name: 'Future Event 2',
+					startTime: futureDate2
+				}
+			];
+
+			mockDb.limit.mockResolvedValueOnce(mockEvents);
+
+			const upcomingEvents = await repo.getUpcomingEvents(1);
+
+			expect(upcomingEvents).toHaveLength(2);
+			expect(upcomingEvents[0].id).toBe(1);
+			expect(upcomingEvents[0].name).toBe('Future Event 1');
+			expect(upcomingEvents[0].startTime).toEqual(futureDate1);
+			expect(upcomingEvents[1].id).toBe(2);
+			expect(upcomingEvents[1].name).toBe('Future Event 2');
+			expect(upcomingEvents[1].startTime).toEqual(futureDate2);
+
+			// Verify the query chain
+			expect(mockDb.select).toHaveBeenCalledWith({
+				id: eventsTable.id,
+				name: eventsTable.name,
+				startTime: eventsTable.time
+			});
+			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
+			expect(mockDb.leftJoin).toHaveBeenCalled();
+			expect(mockDb.where).toHaveBeenCalled();
+			expect(mockDb.orderBy).toHaveBeenCalledWith(eventsTable.time);
+			expect(mockDb.limit).toHaveBeenCalledWith(3);
+		});
+
+		it('should return empty array when no upcoming events', async () => {
+			mockDb.limit.mockResolvedValueOnce([]);
+
+			const upcomingEvents = await repo.getUpcomingEvents(1);
+			expect(upcomingEvents).toHaveLength(0);
+
+			// Verify the query chain
+			expect(mockDb.select).toHaveBeenCalled();
+			expect(mockDb.from).toHaveBeenCalled();
+			expect(mockDb.leftJoin).toHaveBeenCalled();
+			expect(mockDb.where).toHaveBeenCalled();
+			expect(mockDb.orderBy).toHaveBeenCalled();
+			expect(mockDb.limit).toHaveBeenCalledWith(3);
+		});
+	});
+
+	describe('getUserEventStatistics', () => {
+		it('should return correct statistics for user events', async () => {
+			const mockUser = { id: 1, name: 'Test User' };
+			mockDb.insert(usersTable).values().returning.mockResolvedValueOnce([mockUser]);
+
+			const mockStats = [
+				{
+					totalEvents: 3,
+					totalAttended: 2
+				}
+			];
+
+			mockDb.select().from().leftJoin.mockResolvedValueOnce(mockStats);
+
+			const stats = await repo.getUserEventStatistics(mockUser.id);
+
+			expect(stats.totalEventsAttended).toBe(2);
+			expect(stats.attendanceRate).toBe(2 / 3);
+		});
+
+		it('should return zero statistics when user has no events', async () => {
+			const mockUser = { id: 1, name: 'Test User' };
+			mockDb.insert(usersTable).values().returning.mockResolvedValueOnce([mockUser]);
+
+			const mockStats = [
+				{
+					totalEvents: 0,
+					totalAttended: 0
+				}
+			];
+
+			mockDb.select().from().leftJoin.mockResolvedValueOnce(mockStats);
+
+			const stats = await repo.getUserEventStatistics(mockUser.id);
+
+			expect(stats.totalEventsAttended).toBe(0);
+			expect(stats.attendanceRate).toBe(0);
 		});
 	});
 });

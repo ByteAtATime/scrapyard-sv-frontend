@@ -62,6 +62,7 @@ export interface IPointsRepo {
 	getTransactionById(id: number): Promise<PointTransactionData | null>;
 	getPointsStatistics(): Promise<PointsStatistics>;
 	getLeaderboard(): Promise<LeaderboardEntry[]>;
+	getUserRank(userId: number): Promise<{ rank: number; totalUsers: number }>;
 }
 
 export interface IPointsService {

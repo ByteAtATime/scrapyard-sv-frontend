@@ -129,7 +129,6 @@ export class PostgresPointsRepo implements IPointsRepo {
 			})
 			.from(usersTable);
 
-		// Map raw results to LeaderboardEntry objects with an empty transactions array
 		const leaderboard: LeaderboardEntry[] = rawLeaderboard.map((user) => ({
 			...user,
 			transactions: []
@@ -145,8 +144,25 @@ export class PostgresPointsRepo implements IPointsRepo {
 			})
 		);
 
-		// Sort in descending order by totalPoints
 		leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
 		return leaderboard;
+	}
+
+	async getUserRank(userId: number): Promise<{ rank: number; totalUsers: number }> {
+		const result = await db
+			.select({
+				rank: sql<number>`RANK() OVER (ORDER BY COALESCE(SUM(CASE WHEN ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted') THEN ${pointTransactionsTable.amount} ELSE 0 END), 0) DESC)`,
+				userId: usersTable.id,
+				total: sql<number>`COUNT(*) OVER ()`
+			})
+			.from(usersTable)
+			.leftJoin(pointTransactionsTable, eq(pointTransactionsTable.userId, usersTable.id))
+			.groupBy(usersTable.id)
+			.having(eq(usersTable.id, userId));
+
+		return {
+			rank: result[0]?.rank ?? 0,
+			totalUsers: result[0]?.total ?? 0
+		};
 	}
 }
