@@ -3,37 +3,10 @@ import { PostgresPointsRepo } from './postgres';
 import { pointTransactionsTable, usersTable } from '../db/schema';
 import type { PointTransactionData } from '../db/types';
 import { SQL } from 'drizzle-orm';
-import type { Mock } from 'vitest';
-
-type MockDb = {
-	select: Mock;
-	insert: Mock;
-	update: Mock;
-	delete: Mock;
-	from: Mock;
-	where: Mock;
-	set: Mock;
-	values: Mock;
-	returning: Mock;
-	orderBy: Mock;
-	leftJoin: Mock;
-	groupBy: Mock;
-	having: Mock;
-	query: {
-		eventsTable: {
-			findFirst: Mock;
-			findMany: Mock;
-		};
-	};
-};
 
 const mockDb = await vi.hoisted(async () => {
 	const { mockDb } = await import('$lib/server/db/mock');
-	return {
-		...mockDb,
-		groupBy: vi.fn(() => mockDb),
-		having: vi.fn()
-	} as MockDb;
+	return mockDb;
 });
 
 vi.mock('$lib/server/db', () => ({
@@ -46,15 +19,6 @@ describe('PostgresPointsRepo', () => {
 	beforeEach(() => {
 		repository = new PostgresPointsRepo();
 		vi.clearAllMocks();
-		mockDb.select().from().where.mockReturnValue({
-			orderBy: mockDb.orderBy
-		});
-		mockDb.select().from().leftJoin.mockReturnValue({
-			groupBy: mockDb.groupBy
-		});
-		mockDb.groupBy.mockReturnValue({
-			having: mockDb.having
-		});
 	});
 
 	describe('getTotalPoints', () => {
@@ -239,6 +203,140 @@ describe('PostgresPointsRepo', () => {
 
 			const result = await repository.getUserRank(999);
 			expect(result).toEqual({ rank: 0, totalUsers: 0 });
+		});
+	});
+
+	describe('caching behavior', () => {
+		beforeEach(() => {
+			mockDb.select.mockReturnValue(mockDb);
+			mockDb.from.mockReturnValue(mockDb);
+			mockDb.where.mockReturnValue(mockDb);
+			mockDb.orderBy.mockReturnValue(mockDb);
+			mockDb.leftJoin.mockReturnValue(mockDb);
+			mockDb.groupBy.mockReturnValue(mockDb);
+			mockDb.having.mockReturnValue(mockDb);
+		});
+
+		it('should cache and return total points', async () => {
+			const mockUser = { total: 100 };
+			mockDb.where.mockResolvedValueOnce([mockUser]);
+
+			const result1 = await repository.getTotalPoints(1);
+			expect(result1).toBe(100);
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+
+			const result2 = await repository.getTotalPoints(1);
+			expect(result2).toBe(100);
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+		});
+
+		it('should cache and return user transactions', async () => {
+			const mockTransactions = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
+
+			const result1 = await repository.getTransactionsByUser(1);
+			expect(result1).toEqual(mockTransactions);
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+
+			const result2 = await repository.getTransactionsByUser(1);
+			expect(result2).toEqual(mockTransactions);
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+		});
+
+		it('should cache and return user rank', async () => {
+			const mockResult = [{ rank: 3, userId: 1, total: 3 }];
+			mockDb.having.mockResolvedValueOnce(mockResult);
+
+			const result1 = await repository.getUserRank(1);
+			expect(result1).toEqual({ rank: 3, totalUsers: 3 });
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+
+			const result2 = await repository.getUserRank(1);
+			expect(result2).toEqual({ rank: 3, totalUsers: 3 });
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+		});
+
+		it('should invalidate caches when creating a transaction', async () => {
+			const mockPoints = { total: 100 };
+			const mockTransactions = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			const mockRank = [{ rank: 3, userId: 1, total: 3 }];
+
+			mockDb.where.mockResolvedValueOnce([mockPoints]);
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
+			mockDb.having.mockResolvedValueOnce(mockRank);
+
+			await repository.getTotalPoints(1);
+			await repository.getTransactionsByUser(1);
+			await repository.getUserRank(1);
+
+			const newTransaction = { id: 2, userId: 1 } as PointTransactionData;
+			mockDb.insert.mockReturnValue(mockDb);
+			mockDb.values.mockReturnValue(mockDb);
+			mockDb.returning.mockResolvedValueOnce([newTransaction]);
+
+			await repository.createTransaction({
+				userId: 1,
+				amount: 50,
+				reason: 'Test',
+				authorId: 2
+			});
+
+			const newMockPoints = { total: 150 };
+			const newMockTransactions = [...mockTransactions, newTransaction];
+			const newMockRank = [{ rank: 2, userId: 1, total: 3 }];
+
+			mockDb.where.mockResolvedValueOnce([newMockPoints]);
+			mockDb.orderBy.mockResolvedValueOnce(newMockTransactions);
+			mockDb.having.mockResolvedValueOnce(newMockRank);
+
+			const points = await repository.getTotalPoints(1);
+			const transactions = await repository.getTransactionsByUser(1);
+			const rank = await repository.getUserRank(1);
+
+			expect(points).toBe(150);
+			expect(transactions).toEqual(newMockTransactions);
+			expect(rank).toEqual({ rank: 2, totalUsers: 3 });
+		});
+
+		it('should invalidate caches when reviewing a transaction', async () => {
+			const mockPoints = { total: 100 };
+			const mockTransactions = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			const mockRank = [{ rank: 3, userId: 1, total: 3 }];
+
+			mockDb.where.mockResolvedValueOnce([mockPoints]);
+			mockDb.orderBy.mockResolvedValueOnce(mockTransactions);
+			mockDb.having.mockResolvedValueOnce(mockRank);
+
+			await repository.getTotalPoints(1);
+			await repository.getTransactionsByUser(1);
+			await repository.getUserRank(1);
+
+			const updatedTransaction = { id: 1, userId: 1, status: 'approved' } as PointTransactionData;
+			mockDb.update.mockReturnValue(mockDb);
+			mockDb.set.mockReturnValue(mockDb);
+			mockDb.where.mockReturnValue(mockDb);
+			mockDb.returning.mockResolvedValueOnce([updatedTransaction]);
+
+			await repository.reviewTransaction(1, {
+				reviewerId: 2,
+				status: 'approved'
+			});
+
+			const newMockPoints = { total: 150 };
+			const newMockTransactions = [updatedTransaction];
+			const newMockRank = [{ rank: 2, userId: 1, total: 3 }];
+
+			mockDb.where.mockResolvedValueOnce([newMockPoints]);
+			mockDb.orderBy.mockResolvedValueOnce(newMockTransactions);
+			mockDb.having.mockResolvedValueOnce(newMockRank);
+
+			const points = await repository.getTotalPoints(1);
+			const transactions = await repository.getTransactionsByUser(1);
+			const rank = await repository.getUserRank(1);
+
+			expect(points).toBe(150);
+			expect(transactions).toEqual(newMockTransactions);
+			expect(rank).toEqual({ rank: 2, totalUsers: 3 });
 		});
 	});
 });

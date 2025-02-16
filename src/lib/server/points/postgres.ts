@@ -10,9 +10,22 @@ import type {
 } from './types';
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
+import { Logger } from '../logging';
 
 export class PostgresPointsRepo implements IPointsRepo {
+	private userPointsCache = new Map<number, number>();
+	private userTransactionsCache = new Map<number, PointTransactionData[]>();
+	private userRankCache = new Map<number, { rank: number; totalUsers: number }>();
+	private logger = new Logger('PointsRepo');
+
 	async getTotalPoints(userId: number): Promise<number> {
+		const cached = this.userPointsCache.get(userId);
+		if (cached !== undefined) {
+			this.logger.debug('Cache hit: getTotalPoints', { userId });
+			return cached;
+		}
+
+		this.logger.debug('Cache miss: getTotalPoints', { userId });
 		const result = await db
 			.select({
 				total: sql<number>`COALESCE(SUM(${pointTransactionsTable.amount}), 0)`
@@ -25,7 +38,9 @@ export class PostgresPointsRepo implements IPointsRepo {
 					not(eq(pointTransactionsTable.status, 'deleted'))
 				)
 			);
-		return result[0]?.total ?? 0;
+		const total = result[0]?.total ?? 0;
+		this.userPointsCache.set(userId, total);
+		return total;
 	}
 
 	async awardPoints(transaction: PointTransaction): Promise<number> {
@@ -48,15 +63,32 @@ export class PostgresPointsRepo implements IPointsRepo {
 	}
 
 	async getTransactionsByUser(userId: number): Promise<PointTransactionData[]> {
-		return await db
+		const cached = this.userTransactionsCache.get(userId);
+		if (cached !== undefined) {
+			this.logger.debug('Cache hit: getTransactionsByUser', { userId });
+			return cached;
+		}
+
+		this.logger.debug('Cache miss: getTransactionsByUser', { userId });
+		const transactions = await db
 			.select()
 			.from(pointTransactionsTable)
 			.where(eq(pointTransactionsTable.userId, userId))
 			.orderBy(pointTransactionsTable.createdAt);
+
+		this.userTransactionsCache.set(userId, transactions);
+		return transactions;
 	}
 
 	async createTransaction(data: CreateTransactionData): Promise<PointTransactionData> {
+		this.logger.info('Creating transaction', { userId: data.userId, amount: data.amount });
 		const [transaction] = await db.insert(pointTransactionsTable).values(data).returning();
+
+		// Invalidate caches for the affected user
+		this.logger.debug('Invalidating caches after transaction creation', { userId: data.userId });
+		this.userPointsCache.delete(data.userId);
+		this.userTransactionsCache.delete(data.userId);
+		this.userRankCache.delete(data.userId);
 		return transaction;
 	}
 
@@ -64,6 +96,7 @@ export class PostgresPointsRepo implements IPointsRepo {
 		transactionId: number,
 		data: ReviewTransactionData
 	): Promise<PointTransactionData> {
+		this.logger.info('Reviewing transaction', { transactionId, status: data.status });
 		const [transaction] = await db
 			.update(pointTransactionsTable)
 			.set({
@@ -75,6 +108,13 @@ export class PostgresPointsRepo implements IPointsRepo {
 			.where(eq(pointTransactionsTable.id, transactionId))
 			.returning();
 
+		// Invalidate caches for the affected user
+		this.logger.debug('Invalidating caches after transaction review', {
+			userId: transaction.userId
+		});
+		this.userPointsCache.delete(transaction.userId);
+		this.userTransactionsCache.delete(transaction.userId);
+		this.userRankCache.delete(transaction.userId);
 		return transaction;
 	}
 
@@ -149,6 +189,13 @@ export class PostgresPointsRepo implements IPointsRepo {
 	}
 
 	async getUserRank(userId: number): Promise<{ rank: number; totalUsers: number }> {
+		const cached = this.userRankCache.get(userId);
+		if (cached !== undefined) {
+			this.logger.debug('Cache hit: getUserRank', { userId });
+			return cached;
+		}
+
+		this.logger.debug('Cache miss: getUserRank', { userId });
 		const result = await db
 			.select({
 				rank: sql<number>`RANK() OVER (ORDER BY COALESCE(SUM(CASE WHEN ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted') THEN ${pointTransactionsTable.amount} ELSE 0 END), 0) DESC)`,
@@ -160,9 +207,11 @@ export class PostgresPointsRepo implements IPointsRepo {
 			.groupBy(usersTable.id)
 			.having(eq(usersTable.id, userId));
 
-		return {
+		const rank = {
 			rank: result[0]?.rank ?? 0,
 			totalUsers: result[0]?.total ?? 0
 		};
+		this.userRankCache.set(userId, rank);
+		return rank;
 	}
 }
