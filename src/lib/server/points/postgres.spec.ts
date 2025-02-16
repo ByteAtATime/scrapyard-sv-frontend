@@ -26,7 +26,7 @@ describe('PostgresPointsRepo', () => {
 
 	describe('getTotalPoints', () => {
 		it('should return total points for user', async () => {
-			const mockUser = { id: 1, totalPoints: 100 };
+			const mockUser = { total: 100 };
 			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
 			const result = await repository.getTotalPoints(1);
@@ -114,7 +114,6 @@ describe('PostgresPointsRepo', () => {
 
 			expect(result).toEqual(mockTransaction);
 			expect(mockDb.update).toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.update).toHaveBeenCalledWith(usersTable);
 		});
 
 		it('should update transaction status without updating points when rejected', async () => {

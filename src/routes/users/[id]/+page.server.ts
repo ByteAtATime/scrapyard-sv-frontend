@@ -25,10 +25,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const user = await authProvider.getUserById(id);
 
+	if (!user) {
+		throw error(404, 'User not found');
+	}
+
+	const totalPoints = await pointsRepo.getTotalPoints(id);
+
 	return {
 		transactions: transactionPromises
 			.map((t) => (t.status === 'fulfilled' ? t.value : null))
 			.filter((t) => !!t),
-		user
+		user,
+		totalPoints
 	};
 };

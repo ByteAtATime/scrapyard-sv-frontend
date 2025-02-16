@@ -14,7 +14,16 @@ export type PointTransactionData = z.infer<typeof selectPointTransactionSchema>;
 
 export const selectUserSchema = createSelectSchema(usersTable);
 export const insertUserSchema = createInsertSchema(usersTable);
-export type UserData = z.infer<typeof selectUserSchema>;
+export interface UserData {
+	id: number;
+	name: string;
+	email: string;
+	authProvider: 'clerk';
+	authProviderId: string;
+	isOrganizer: boolean;
+	totalPoints?: number;
+	[key: string]: unknown;
+}
 
 export const selectEventSchema = createSelectSchema(eventsTable);
 export const insertEventSchema = createInsertSchema(eventsTable);

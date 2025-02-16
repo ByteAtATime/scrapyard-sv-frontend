@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type {
 	IShopRepo,
 	CreateShopItemData,
@@ -10,7 +10,7 @@ import { ItemNotFoundError, ItemNotOrderableError, InsufficientStockError } from
 import { ShopItem } from './shop-item';
 import { Order } from './order';
 import { db } from '../db';
-import { ordersTable, shopItemsTable, pointTransactionsTable, usersTable } from '../db/schema';
+import { ordersTable, shopItemsTable, pointTransactionsTable } from '../db/schema';
 
 export class PostgresShopRepository implements IShopRepo {
 	async getAllItems(): Promise<ShopItem[]> {
@@ -92,13 +92,6 @@ export class PostgresShopRepository implements IShopRepo {
 			});
 
 			await this.updateStock(itemId, item.stock - 1);
-
-			await tx
-				.update(usersTable)
-				.set({
-					totalPoints: sql`${usersTable.totalPoints} - ${item.price}`
-				})
-				.where(eq(usersTable.id, userId));
 
 			await tx.insert(pointTransactionsTable).values({
 				userId: userId,

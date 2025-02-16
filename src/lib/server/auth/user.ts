@@ -31,7 +31,7 @@ export class User {
 	}
 
 	public get totalPoints(): number {
-		return this.data.totalPoints;
+		return (this.data as { totalPoints?: number }).totalPoints ?? 0;
 	}
 
 	public get isOrganizer(): boolean {

@@ -1,5 +1,5 @@
-import type { UserData } from '$lib/server/db/types';
 import type { User } from './user';
+import type { UserData } from '$lib/server/db/types';
 
 export interface IAuthState {
 	userId: string | null;

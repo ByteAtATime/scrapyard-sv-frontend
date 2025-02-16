@@ -130,6 +130,8 @@ describe('AuthService', () => {
 				id: 1,
 				name: 'Test User',
 				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'mockClerkId',
 				totalPoints: 0,
 				isOrganizer: false
 			} as UserData;

@@ -82,6 +82,8 @@ describe('ClerkAuthProvider', () => {
 				id: 1,
 				name: 'Test User',
 				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'mockClerkId',
 				totalPoints: 0,
 				isOrganizer: false
 			} as UserData;
@@ -101,7 +103,14 @@ describe('ClerkAuthProvider', () => {
 		});
 
 		it('should return user data when found', async () => {
-			const mockUser = { id: 1, name: 'Test User' } as UserData;
+			const mockUser = {
+				id: 1,
+				name: 'Test User',
+				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'mockClerkId',
+				isOrganizer: false
+			} as UserData;
 			mockDb.select().from().where.mockResolvedValueOnce([mockUser]);
 
 			const result = await provider.getUserById(1);

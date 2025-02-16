@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { pointTransactionsTable, usersTable } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and, not } from 'drizzle-orm';
 import type {
 	IPointsRepo,
 	PointsStatistics,
@@ -12,8 +12,19 @@ import type { PointTransaction } from './transaction';
 
 export class PostgresPointsRepo implements IPointsRepo {
 	async getTotalPoints(userId: number): Promise<number> {
-		const users = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-		return users[0]?.totalPoints ?? 0;
+		const result = await db
+			.select({
+				total: sql<number>`COALESCE(SUM(${pointTransactionsTable.amount}), 0)`
+			})
+			.from(pointTransactionsTable)
+			.where(
+				and(
+					eq(pointTransactionsTable.userId, userId),
+					not(eq(pointTransactionsTable.status, 'rejected')),
+					not(eq(pointTransactionsTable.status, 'deleted'))
+				)
+			);
+		return result[0]?.total ?? 0;
 	}
 
 	async awardPoints(transaction: PointTransaction): Promise<number> {
@@ -27,13 +38,6 @@ export class PostgresPointsRepo implements IPointsRepo {
 				status: 'pending'
 			})
 			.returning({ id: pointTransactionsTable.id });
-
-		await db
-			.update(usersTable)
-			.set({
-				totalPoints: sql`${usersTable.totalPoints} + ${transaction.amount}`
-			})
-			.where(eq(usersTable.id, transaction.userId));
 
 		return result.id;
 	}
@@ -70,18 +74,6 @@ export class PostgresPointsRepo implements IPointsRepo {
 			.where(eq(pointTransactionsTable.id, transactionId))
 			.returning();
 
-		if (data.status === 'approved') {
-			await db
-				.update(usersTable)
-				.set({
-					totalPoints: sql`${usersTable.totalPoints} + (
-						SELECT amount FROM ${pointTransactionsTable}
-						WHERE id = ${transactionId}
-					)`
-				})
-				.where(eq(usersTable.id, transaction.userId));
-		}
-
 		return transaction;
 	}
 
@@ -104,21 +96,21 @@ export class PostgresPointsRepo implements IPointsRepo {
 	async getPointsStatistics(): Promise<PointsStatistics> {
 		const users = await db
 			.select({
-				totalPoints: usersTable.totalPoints,
+				id: usersTable.id,
 				name: usersTable.name,
-				id: usersTable.id
+				totalPoints: sql<number>`COALESCE((SELECT SUM(${pointTransactionsTable.amount}) FROM ${pointTransactionsTable} WHERE ${pointTransactionsTable.userId} = ${usersTable.id} AND ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted')), 0)`
 			})
-			.from(usersTable)
-			.orderBy(usersTable.totalPoints);
+			.from(usersTable);
 
+		users.sort((a, b) => a.totalPoints - b.totalPoints);
 		const topEarner = users[users.length - 1];
 
+		const totalPointsAwarded = users.reduce((sum, user) => sum + user.totalPoints, 0);
+		const averagePointsPerAttendee = users.length > 0 ? totalPointsAwarded / users.length : 0;
+
 		return {
-			totalPointsAwarded: users.reduce((sum, user) => sum + user.totalPoints, 0),
-			averagePointsPerAttendee:
-				users.length > 0
-					? users.reduce((sum, user) => sum + user.totalPoints, 0) / users.length
-					: 0,
+			totalPointsAwarded,
+			averagePointsPerAttendee,
 			topEarner: {
 				userId: topEarner?.id ?? 0,
 				name: topEarner?.name ?? '',

@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PostgresEventsRepo } from './postgres';
 import { Event } from './event';
-import {
-	eventsTable,
-	eventAttendanceTable,
-	pointTransactionsTable,
-	usersTable
-} from '../db/schema';
+import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
 import { MockAuthProvider } from '../auth/mock';
 import { mockDb } from '../db/mock';
 import type { EventData } from '../db/types';
@@ -207,7 +202,6 @@ describe('PostgresEventsRepo', () => {
 			expect(mockDb.insert).toHaveBeenCalledTimes(2);
 			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
 			expect(mockDb.insert).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.update).toHaveBeenCalledWith(usersTable);
 			expect(mockDb.values).toHaveBeenCalledWith({
 				userId: userId,
 				amount: attendancePoints,
@@ -220,10 +214,6 @@ describe('PostgresEventsRepo', () => {
 				userId: userId,
 				checkedInBy: authorId
 			});
-			expect(mockDb.set).toHaveBeenCalledWith({
-				totalPoints: expect.any(Object) // sql`${usersTable.totalPoints} + ${pointValue}`
-			});
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
 		});
 
 		it('should check in a user to an event without awarding points if attendancePoints is 0', async () => {
@@ -247,13 +237,12 @@ describe('PostgresEventsRepo', () => {
 			await repo.checkInUser(eventId, userId, authorId);
 
 			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.anything()
+				where: expect.any(SQL)
 			});
 			expect(mockDb.transaction).toHaveBeenCalled();
 			expect(mockDb.insert).toHaveBeenCalledTimes(1);
 			expect(mockDb.insert).toHaveBeenCalledWith(eventAttendanceTable);
 			expect(mockDb.insert).not.toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.update).not.toHaveBeenCalledWith(usersTable);
 			expect(mockDb.values).toHaveBeenCalledWith({
 				eventId: eventId,
 				userId: userId,

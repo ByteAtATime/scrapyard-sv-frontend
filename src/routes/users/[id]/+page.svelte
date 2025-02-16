@@ -7,7 +7,7 @@
 
 	let { data } = $props();
 
-	const { user, transactions } = $derived(data);
+	const { user, transactions, totalPoints } = $derived(data);
 </script>
 
 <div class="container max-w-3xl py-8">
@@ -21,7 +21,7 @@
 				<Coins class="h-4 w-4 text-yellow-500" />
 
 				<span>
-					<span class="text-2xl">{user?.totalPoints}</span>
+					<span class="text-2xl">{totalPoints}</span>
 					<span class="text-lg text-muted-foreground">points</span>
 				</span>
 			</div>

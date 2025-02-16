@@ -26,7 +26,6 @@ export class PostgresUserRepository implements IUserRepository {
 				email: data.email,
 				authProvider: 'clerk' as const,
 				authProviderId: data.authProviderId,
-				totalPoints: 0,
 				isOrganizer: false
 			})
 			.returning();

@@ -2,12 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import type { EventData, EventAttendanceData } from '../db/types';
 import type { IEventsRepo, EventStatistics } from './types';
-import {
-	eventAttendanceTable,
-	eventsTable,
-	pointTransactionsTable,
-	usersTable
-} from '../db/schema';
+import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
 import type { Event } from './event';
 
 export class PostgresEventsRepo implements IEventsRepo {
@@ -70,13 +65,6 @@ export class PostgresEventsRepo implements IEventsRepo {
 					authorId: author,
 					status: 'approved'
 				});
-
-				await tx
-					.update(usersTable)
-					.set({
-						totalPoints: sql`${usersTable.totalPoints} + ${pointValue}`
-					})
-					.where(eq(usersTable.id, userId));
 			}
 
 			await tx.insert(eventAttendanceTable).values({
