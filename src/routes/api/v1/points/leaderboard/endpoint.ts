@@ -5,8 +5,5 @@ export const endpoint_GET: EndpointHandler<{ pointsRepo: IPointsRepo }> = async 
 	pointsRepo
 }) => {
 	const leaderboard = await pointsRepo.getLeaderboard();
-	return {
-		success: true,
-		leaderboard
-	};
+	return leaderboard;
 };

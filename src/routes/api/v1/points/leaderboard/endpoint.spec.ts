@@ -13,7 +13,7 @@ describe('GET /api/v1/points/leaderboard', () => {
 
 		const result = await endpoint_GET({ pointsRepo });
 
-		expect(result).toEqual({ success: true, leaderboard: mockLeaderboard });
+		expect(result).toEqual(mockLeaderboard);
 		expect(pointsRepo.getLeaderboard).toHaveBeenCalled();
 	});
 
@@ -45,7 +45,7 @@ describe('GET /api/v1/points/leaderboard', () => {
 		pointsRepo.getLeaderboard.mockResolvedValue(mockLeaderboard);
 
 		const result = await endpoint_GET({ pointsRepo });
-		expect(result).toEqual({ success: true, leaderboard: mockLeaderboard });
+		expect(result).toEqual(mockLeaderboard);
 	});
 
 	it('should return an empty leaderboard when no data', async () => {
@@ -53,6 +53,6 @@ describe('GET /api/v1/points/leaderboard', () => {
 		pointsRepo.getLeaderboard.mockResolvedValue([]);
 
 		const result = await endpoint_GET({ pointsRepo });
-		expect(result).toEqual({ success: true, leaderboard: [] });
+		expect(result).toEqual([]);
 	});
 });
