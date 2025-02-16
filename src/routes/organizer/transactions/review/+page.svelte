@@ -110,7 +110,7 @@
 								</TableCell>
 								<TableCell>{transaction.amount}</TableCell>
 								<TableCell>{transaction.reason}</TableCell>
-								<TableCell>{transaction.authorId}</TableCell>
+								<TableCell>{transaction.author.name}</TableCell>
 								<TableCell>
 									<StatusBadge
 										status={transaction.status}
