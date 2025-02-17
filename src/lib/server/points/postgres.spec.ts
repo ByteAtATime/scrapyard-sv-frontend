@@ -3,6 +3,8 @@ import { PostgresPointsRepo } from './postgres';
 import { pointTransactionsTable, usersTable } from '../db/schema';
 import type { PointTransactionData } from '../db/types';
 import { SQL } from 'drizzle-orm';
+import { PointTransaction } from './transaction';
+import { MockAuthProvider } from '../auth/mock';
 
 const mockDb = await vi.hoisted(async () => {
 	const { mockDb } = await import('$lib/server/db/mock');
@@ -337,6 +339,152 @@ describe('PostgresPointsRepo', () => {
 			expect(points).toBe(150);
 			expect(transactions).toEqual(newMockTransactions);
 			expect(rank).toEqual({ rank: 2, totalUsers: 3 });
+		});
+	});
+
+	describe('getLeaderboard', () => {
+		it('should return sorted leaderboard with user points and transactions', async () => {
+			const mockUsers = [
+				{ userId: 1, name: 'User 1', totalPoints: 100 },
+				{ userId: 2, name: 'User 2', totalPoints: 200 }
+			];
+			const mockTransactions1 = [{ id: 1, userId: 1, amount: 100 } as PointTransactionData];
+			const mockTransactions2 = [{ id: 2, userId: 2, amount: 200 } as PointTransactionData];
+
+			mockDb.from.mockResolvedValueOnce(mockUsers);
+			mockDb.where.mockResolvedValueOnce(mockTransactions1);
+			mockDb.where.mockResolvedValueOnce(mockTransactions2);
+
+			const result = await repository.getLeaderboard();
+
+			expect(result).toEqual([
+				{ ...mockUsers[1], transactions: mockTransactions2 },
+				{ ...mockUsers[0], transactions: mockTransactions1 }
+			]);
+			expect(mockDb.select).toHaveBeenCalledTimes(3);
+		});
+
+		it('should handle empty leaderboard', async () => {
+			mockDb.from.mockResolvedValueOnce([]);
+
+			const result = await repository.getLeaderboard();
+
+			expect(result).toEqual([]);
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getPointsStatistics', () => {
+		it('should return correct statistics with users', async () => {
+			const mockUsers = [
+				{ id: 1, name: 'User 1', totalPoints: 100 },
+				{ id: 2, name: 'User 2', totalPoints: 200 }
+			];
+			mockDb.from.mockResolvedValueOnce(mockUsers);
+
+			const result = await repository.getPointsStatistics();
+
+			expect(result).toEqual({
+				totalPointsAwarded: 300,
+				averagePointsPerAttendee: 150,
+				topEarner: {
+					userId: 2,
+					name: 'User 2',
+					totalPoints: 200
+				}
+			});
+			expect(mockDb.select).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle empty user list', async () => {
+			mockDb.select().from.mockResolvedValueOnce([]);
+
+			const result = await repository.getPointsStatistics();
+
+			expect(result).toEqual({
+				totalPointsAwarded: 0,
+				averagePointsPerAttendee: 0,
+				topEarner: {
+					userId: 0,
+					name: '',
+					totalPoints: 0
+				}
+			});
+		});
+	});
+
+	describe('awardPoints', () => {
+		it('should create a pending transaction and return its id', async () => {
+			const mockResult = [{ id: 1 }];
+
+			mockDb.insert().values.mockReturnThis();
+			mockDb.returning.mockResolvedValueOnce(mockResult);
+
+			const mockAuthProvider = new MockAuthProvider();
+			const mockTransaction = new PointTransaction(
+				{
+					id: 0,
+					userId: 1,
+					amount: 50,
+					authorId: 2,
+					reason: '',
+					status: 'pending',
+					reviewerId: null,
+					reviewedAt: null,
+					rejectionReason: null,
+					createdAt: new Date()
+				},
+				mockAuthProvider
+			);
+
+			const result = await repository.awardPoints(mockTransaction);
+
+			expect(result).toBe(1);
+			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
+			expect(mockDb.values).toHaveBeenCalledWith({
+				userId: 1,
+				amount: 50,
+				authorId: 2,
+				reason: '',
+				status: 'pending'
+			});
+			expect(mockDb.returning).toHaveBeenCalledWith({ id: pointTransactionsTable.id });
+		});
+
+		it('should handle transaction creation with minimum required fields', async () => {
+			const mockResult = [{ id: 2 }];
+
+			mockDb.insert().values.mockReturnThis();
+			mockDb.returning.mockResolvedValueOnce(mockResult);
+
+			const mockAuthProvider = new MockAuthProvider();
+			const mockTransaction = new PointTransaction(
+				{
+					id: 0,
+					userId: 1,
+					amount: 50,
+					authorId: 2,
+					reason: '',
+					status: 'pending',
+					reviewerId: null,
+					reviewedAt: null,
+					rejectionReason: null,
+					createdAt: new Date()
+				},
+				mockAuthProvider
+			);
+
+			const result = await repository.awardPoints(mockTransaction);
+
+			expect(result).toBe(2);
+			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
+			expect(mockDb.values).toHaveBeenCalledWith({
+				userId: 1,
+				amount: 50,
+				authorId: 2,
+				reason: '',
+				status: 'pending'
+			});
 		});
 	});
 });

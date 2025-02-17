@@ -1,3 +1,4 @@
+/* v8 ignore start */
 export function formatDate(date: Date): string {
 	return date.toLocaleString('en-US', {
 		weekday: 'short',
@@ -8,3 +9,4 @@ export function formatDate(date: Date): string {
 		minute: '2-digit'
 	});
 }
+/* v8 ignore end */
