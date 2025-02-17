@@ -3,6 +3,7 @@
 	import { UserIcon } from 'lucide-svelte';
 	import type { User } from '$lib/server/auth/user';
 	import { formatDate } from '$lib/utils/date';
+	import { CONFIG } from '$lib/config';
 
 	type Props = {
 		user: User;
@@ -42,7 +43,8 @@
 							ID: {user.id}
 						</span>
 						<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
-							{user.totalPoints} points
+							{user.totalPoints}
+							{CONFIG.points.plural}
 						</span>
 						{#if user.isOrganizer}
 							<span class="rounded-md bg-blue-500/10 px-2 py-0.5 text-blue-500"> Organizer </span>

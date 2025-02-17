@@ -9,6 +9,7 @@
 		Calendar,
 		ShoppingBag
 	} from 'lucide-svelte';
+	import { CONFIG } from '$lib/config';
 
 	const items = [
 		{
@@ -22,7 +23,7 @@
 			icon: Calendar
 		},
 		{
-			title: 'Award Points',
+			title: `${CONFIG.points.awardVerb} ${CONFIG.points.Plural}`,
 			url: '/organizer/points/award',
 			icon: Coins
 		},

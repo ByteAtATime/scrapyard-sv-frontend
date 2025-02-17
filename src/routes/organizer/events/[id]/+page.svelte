@@ -20,6 +20,7 @@
 	import { formatDate } from '$lib/utils/date';
 	import RapidCheckIn from './_components/RapidCheckIn.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { CONFIG } from '$lib/config';
 
 	const { data } = $props<{
 		event: {
@@ -104,8 +105,8 @@
 					<p class="text-muted-foreground">{data.event.description}</p>
 				</div>
 				<div>
-					<Label>Attendance Points</Label>
-					<p class="text-lg">{data.event.attendancePoints} points</p>
+					<Label>Attendance {CONFIG.points.Plural}</Label>
+					<p class="text-lg">{data.event.attendancePoints} {CONFIG.points.plural}</p>
 				</div>
 			</CardContent>
 		</Card>

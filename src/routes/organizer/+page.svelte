@@ -5,12 +5,12 @@
 		Calendar,
 		Award,
 		TrendingUp,
-		Crown,
-		Target,
 		Hash,
 		UserCheck,
-		type Icon as IconType
+		type Icon as IconType,
+		Trophy
 	} from 'lucide-svelte';
+	import { CONFIG } from '$lib/config';
 
 	let { data } = $props();
 
@@ -73,25 +73,26 @@
 			formatPercent(data.eventStats.averageAttendancePerEvent),
 			TrendingUp
 		)}
-		{@render statCard('Total Points', formatNumber(data.pointsStats.totalPointsAwarded), Award)}
+		{@render statCard(
+			`Total ${CONFIG.points.Plural}`,
+			formatNumber(data.pointsStats.totalPointsAwarded),
+			Award
+		)}
 	</div>
 
 	<div class="mt-8 grid gap-4 md:grid-cols-2">
 		<Card class="p-6">
-			<h3 class="mb-4 text-lg font-semibold">Points Statistics</h3>
+			<h3 class="mb-4 text-lg font-semibold">{CONFIG.points.Plural} Statistics</h3>
 			<div class="space-y-4">
 				{@render statRow(
-					'Average Points per Attendee',
+					`Average ${CONFIG.points.Plural} per Attendee`,
 					formatNumber(data.pointsStats.averagePointsPerAttendee),
-					Target
+					Users
 				)}
 				{@render statRow(
-					'Top Point Earner',
-					`${data.pointsStats.topEarner.name} (${formatNumber(
-						data.pointsStats.topEarner.totalPoints
-					)} pts)`,
-					Crown,
-					'font-medium text-primary underline hover:text-blue-700 dark:hover:text-blue-300'
+					`Top ${CONFIG.points.Plural} Earner`,
+					`${data.pointsStats.topEarner.name} (${formatNumber(data.pointsStats.topEarner.totalPoints)})`,
+					Trophy
 				)}
 			</div>
 		</Card>

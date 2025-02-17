@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Popover from '$lib/components/ui/popover';
 	import type { PointTransactionData } from '$lib/server/db/types';
+	import { CONFIG } from '$lib/config';
 
 	type Props = {
 		name: string;
@@ -23,7 +24,7 @@
 					<span class="font-semibold">{name}</span>
 				</span>
 			</div>
-			<span class="font-semibold">{points} Points</span>
+			<span class="font-semibold">{points} {CONFIG.points.Plural}</span>
 		</div>
 	</Popover.Trigger>
 	<Popover.Content>

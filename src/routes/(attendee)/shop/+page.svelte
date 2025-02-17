@@ -7,6 +7,7 @@
 	import type { ShopItemJson } from '$lib/server/shop';
 	import { superForm } from 'sveltekit-superforms';
 	import { toast } from 'svelte-sonner';
+	import { CONFIG } from '$lib/config';
 
 	let { data } = $props();
 	const { items, purchaseForm } = $derived(data);
@@ -38,8 +39,8 @@
 				<Dialog.Title>Purchase {item.name}</Dialog.Title>
 				<Dialog.Description>
 					You are about to purchase <span class="font-bold text-foreground">{item.name}</span> for
-					<span class="font-bold text-foreground">{item.price}</span> points. Are you sure you want to
-					proceed?
+					<span class="font-bold text-foreground">{item.price}</span>
+					{CONFIG.points.plural}. Are you sure you want to proceed?
 				</Dialog.Description>
 			</Dialog.Header>
 

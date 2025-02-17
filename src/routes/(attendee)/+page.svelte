@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Card } from '$lib/components/ui/card';
 	import { Trophy, Calendar, Award, TrendingUp, type Icon as IconType } from 'lucide-svelte';
+	import { CONFIG } from '$lib/config';
 
 	let { data } = $props();
 
@@ -48,7 +49,11 @@
 	</div>
 
 	<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-		{@render statCard('Total XP', formatNumber(data.userStats.totalPoints), Award)}
+		{@render statCard(
+			`Total ${CONFIG.points.Plural}`,
+			formatNumber(data.userStats.totalPoints),
+			Award
+		)}
 		{@render statCard(
 			'Leaderboard Position',
 			`#${data.userStats.leaderboardPosition} of ${data.userStats.totalParticipants}`,

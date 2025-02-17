@@ -21,6 +21,7 @@
 	import RejectDialog from './_components/RejectDialog.svelte';
 	import type { PointTransactionData } from '$lib/server/db/types';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { CONFIG } from '$lib/config';
 
 	const { data } = $props();
 
@@ -81,7 +82,9 @@
 		<Card>
 			<CardHeader>
 				<CardTitle>Review Transactions</CardTitle>
-				<CardDescription>Review and approve/reject/delete point transactions</CardDescription>
+				<CardDescription
+					>Review and approve/reject/delete {CONFIG.points.singular} transactions</CardDescription
+				>
 			</CardHeader>
 			<CardContent>
 				<Table>
@@ -89,7 +92,7 @@
 						<TableRow>
 							<TableHead>Date</TableHead>
 							<TableHead>User</TableHead>
-							<TableHead>Points</TableHead>
+							<TableHead>{CONFIG.points.Plural}</TableHead>
 							<TableHead>Reason</TableHead>
 							<TableHead>Author</TableHead>
 							<TableHead>Status</TableHead>

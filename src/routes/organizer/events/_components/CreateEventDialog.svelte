@@ -15,6 +15,7 @@
 	} from '$lib/components/ui/dialog';
 	import { toast } from 'svelte-sonner';
 	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { CONFIG } from '$lib/config';
 
 	let { data, open = $bindable(false) }: { data: PageData; open: boolean } = $props();
 
@@ -94,7 +95,7 @@
 			</div>
 
 			<div class="space-y-2">
-				<Label for="attendancePoints">Attendance Points</Label>
+				<Label for="attendancePoints">Attendance {CONFIG.points.Plural}</Label>
 				<Input
 					type="number"
 					id="attendancePoints"

@@ -8,6 +8,7 @@
 	import { Coins, Pencil, Trash2 } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { CONFIG } from '$lib/config';
 
 	let { data } = $props();
 	const { items } = $derived(data);
@@ -201,7 +202,7 @@
 				{/if}
 			</div>
 			<div class="space-y-2">
-				<Label for="price">Price (points)</Label>
+				<Label for="price">Price ({CONFIG.points.plural})</Label>
 				<Input
 					id="price"
 					name="price"
@@ -298,7 +299,7 @@
 				{/if}
 			</div>
 			<div class="space-y-2">
-				<Label for="edit-price">Price (points)</Label>
+				<Label for="edit-price">Price ({CONFIG.points.plural})</Label>
 				<Input
 					id="edit-price"
 					name="price"

@@ -4,6 +4,7 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { Coins } from 'lucide-svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { CONFIG } from '$lib/config';
 
 	let { data } = $props();
 
@@ -22,7 +23,7 @@
 
 				<span>
 					<span class="text-2xl">{totalPoints}</span>
-					<span class="text-lg text-muted-foreground">points</span>
+					<span class="text-lg text-muted-foreground">{CONFIG.points.plural}</span>
 				</span>
 			</div>
 		</div>

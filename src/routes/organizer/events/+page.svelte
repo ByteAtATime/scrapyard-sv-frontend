@@ -18,6 +18,7 @@
 	import { Plus } from 'lucide-svelte';
 	import { formatDate } from '$lib/utils/date';
 	import CreateEventDialog from './_components/CreateEventDialog.svelte';
+	import { CONFIG } from '$lib/config';
 
 	const { data } = $props();
 
@@ -44,7 +45,7 @@
 					<TableRow>
 						<TableHead>Name</TableHead>
 						<TableHead>Date & Time</TableHead>
-						<TableHead>Points</TableHead>
+						<TableHead>{CONFIG.points.Plural}</TableHead>
 						<TableHead class="text-right">Actions</TableHead>
 					</TableRow>
 				</TableHeader>
