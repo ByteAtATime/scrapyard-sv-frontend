@@ -99,9 +99,10 @@
 									{formatDate(transaction.createdAt)}
 								</p>
 							</div>
-							<span class="font-medium text-primary"
-								>{transaction.amount > 0 ? '+' : ''}{transaction.amount} XP</span
-							>
+							<span class="font-medium text-primary">
+								{transaction.amount > 0 ? '+' : ''}{transaction.amount}
+								{CONFIG.points.Plural}
+							</span>
 						</div>
 					{/each}
 				</div>
