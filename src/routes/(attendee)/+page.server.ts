@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { eventsRepo } from '$lib/server/events';
 import { pointsRepo } from '$lib/server/points';
 import type { PointTransactionData } from '$lib/server/db/types';
@@ -9,7 +9,7 @@ export const load = async ({ locals }) => {
 	const userId = await authProvider.getUserId();
 
 	if (!userId) {
-		throw error(401, 'Unauthorized');
+		return redirect(302, '/login');
 	}
 
 	const [totalPoints, userRank, userTransactions, upcomingEvents, userEventStats] =
