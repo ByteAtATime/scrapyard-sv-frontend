@@ -16,7 +16,7 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions = {
-	default: async ({ request, locals }) => {
+	default: async ({ request, locals, fetch }) => {
 		const form = await superValidate(request, zod(purchaseSchema));
 
 		if (!form.valid) {
@@ -32,7 +32,17 @@ export const actions = {
 		}
 
 		try {
-			await shopService.purchaseItem(user.id, form.data.itemId);
+			const response = await fetch('/api/v1/shop/order', {
+				method: 'POST',
+				body: JSON.stringify({ itemId: form.data.itemId })
+			});
+
+			if (!response.ok) {
+				const { error } = await response.json();
+
+				return fail(400, { form, error });
+			}
+
 			return message(form, 'Item purchased successfully.');
 		} catch (error) {
 			if (error instanceof Error) {
