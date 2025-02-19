@@ -5,12 +5,14 @@ import type { IEventsRepo, EventStatistics, UpcomingEvent, UserEventStatistics }
 import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';
 import type { Event } from './event';
 import { and, gt } from 'drizzle-orm';
+import { Cache } from '../cache';
 
 export class PostgresEventsRepo implements IEventsRepo {
-	private eventCache = new Map<number, EventData>();
-	private userAttendanceCache = new Map<number, EventAttendanceData[]>();
-	private userStatsCache = new Map<number, UserEventStatistics>();
-	private upcomingEventsCache = new Map<number, UpcomingEvent[]>();
+	private static TTL_MS = 5000; // 5 seconds
+	private eventCache = new Cache<number, EventData>(PostgresEventsRepo.TTL_MS);
+	private userAttendanceCache = new Cache<number, EventAttendanceData[]>(PostgresEventsRepo.TTL_MS);
+	private userStatsCache = new Cache<number, UserEventStatistics>(PostgresEventsRepo.TTL_MS);
+	private upcomingEventsCache = new Cache<number, UpcomingEvent[]>(PostgresEventsRepo.TTL_MS);
 
 	async createEvent(event: Event): Promise<number> {
 		const result = await db

@@ -11,11 +11,17 @@ import type {
 import type { PointTransactionData } from '../db/types';
 import type { PointTransaction } from './transaction';
 import { Logger } from '../logging';
+import { Cache } from '../cache';
 
 export class PostgresPointsRepo implements IPointsRepo {
-	private userPointsCache = new Map<number, number>();
-	private userTransactionsCache = new Map<number, PointTransactionData[]>();
-	private userRankCache = new Map<number, { rank: number; totalUsers: number }>();
+	private static TTL_MS = 5000; // 5 seconds
+	private userPointsCache = new Cache<number, number>(PostgresPointsRepo.TTL_MS);
+	private userTransactionsCache = new Cache<number, PointTransactionData[]>(
+		PostgresPointsRepo.TTL_MS
+	);
+	private userRankCache = new Cache<number, { rank: number; totalUsers: number }>(
+		PostgresPointsRepo.TTL_MS
+	);
 	private logger = new Logger('PointsRepo');
 
 	async getTotalPoints(userId: number): Promise<number> {
@@ -84,7 +90,6 @@ export class PostgresPointsRepo implements IPointsRepo {
 		this.logger.info('Creating transaction', { userId: data.userId, amount: data.amount });
 		const [transaction] = await db.insert(pointTransactionsTable).values(data).returning();
 
-		// Invalidate caches for the affected user
 		this.logger.debug('Invalidating caches after transaction creation', { userId: data.userId });
 		this.userPointsCache.delete(data.userId);
 		this.userTransactionsCache.delete(data.userId);
@@ -108,7 +113,6 @@ export class PostgresPointsRepo implements IPointsRepo {
 			.where(eq(pointTransactionsTable.id, transactionId))
 			.returning();
 
-		// Invalidate caches for the affected user
 		this.logger.debug('Invalidating caches after transaction review', {
 			userId: transaction.userId
 		});
