@@ -49,7 +49,7 @@ export class AuthService implements IAuthProvider {
 			return null;
 		}
 
-		return new User(user, this);
+		return new User(user);
 	}
 
 	async getUserById(id: number): Promise<UserData | null> {

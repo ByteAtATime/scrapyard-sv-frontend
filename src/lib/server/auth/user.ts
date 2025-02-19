@@ -7,35 +7,43 @@ export const userJsonSchema = z.object({
 	id: z.number(),
 	name: z.string(),
 	email: z.string(),
-	totalPoints: z.number(),
+	totalPoints: z.coerce.number(),
 	isOrganizer: z.boolean()
 });
 export type UserJson = z.infer<typeof userJsonSchema>;
 
+export interface IUserWithPoints extends UserData {
+	totalPoints: number;
+}
+
 export class User {
-	constructor(
-		private readonly data: UserData,
-		private readonly authProvider: IAuthProvider
-	) {}
+	private readonly _data: UserData;
+	private _totalPoints: number | null;
+
+	constructor(data: UserData, totalPoints?: number) {
+		this._data = data;
+		this._totalPoints = totalPoints ?? null;
+	}
 
 	public get id(): number {
-		return this.data.id;
+		return this._data.id;
 	}
 
 	public get name(): string {
-		return this.data.name;
+		return this._data.name;
 	}
 
 	public get email(): string {
-		return this.data.email;
+		return this._data.email;
 	}
 
 	public get totalPoints(): number {
-		return (this.data as { totalPoints?: number }).totalPoints ?? 0;
+		// If points weren't provided, default to 0
+		return this._totalPoints ?? 0;
 	}
 
 	public get isOrganizer(): boolean {
-		return this.data.isOrganizer;
+		return this._data.isOrganizer;
 	}
 
 	public toJson(): UserJson {
@@ -46,6 +54,14 @@ export class User {
 			totalPoints: this.totalPoints,
 			isOrganizer: this.isOrganizer
 		});
+	}
+
+	public static fromUserData(userData: UserData, totalPoints: number): User {
+		return new User(userData, totalPoints);
+	}
+
+	public withPoints(points: number): User {
+		return new User(this._data, points);
 	}
 }
 

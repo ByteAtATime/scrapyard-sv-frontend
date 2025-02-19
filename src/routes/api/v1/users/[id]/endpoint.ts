@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import type { EndpointHandler } from '$lib/server/endpoints';
 import { pointTransactionsTable } from '$lib/server/db/schema';
 import { eq, and, not, sql } from 'drizzle-orm';
+import { User } from '$lib/server/auth/user';
 
 type RouteParams = {
 	id: string;
@@ -53,5 +54,6 @@ export const endpoint_GET: EndpointHandler<{
 		);
 	const totalPoints = totalResult[0]?.total ?? 0;
 
-	return { ...user, totalPoints };
+	const userWithPoints = User.fromUserData(user, totalPoints);
+	return userWithPoints.toJson();
 };

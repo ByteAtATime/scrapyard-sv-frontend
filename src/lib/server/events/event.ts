@@ -45,7 +45,7 @@ export class Event {
 		const userData = await this.authProvider.getUserById(this.data.contactOrganizerId);
 		if (!userData) return null;
 
-		return new User(userData, this.authProvider);
+		return new User(userData);
 	}
 
 	public async toJson(): Promise<EventJson> {
