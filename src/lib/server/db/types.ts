@@ -4,7 +4,9 @@ import {
 	eventsTable,
 	ordersTable,
 	pointTransactionsTable,
-	usersTable
+	usersTable,
+	teamsTable,
+	teamMembersTable
 } from './schema';
 import type { z } from 'zod';
 
@@ -36,3 +38,15 @@ export type EventAttendanceData = z.infer<typeof selectEventAttendanceSchema>;
 export const selectOrderSchema = createSelectSchema(ordersTable);
 export const insertOrderSchema = createInsertSchema(ordersTable);
 export type OrderData = z.infer<typeof selectOrderSchema>;
+
+export const selectTeamSchema = createSelectSchema(teamsTable);
+export const insertTeamSchema = createInsertSchema(teamsTable);
+export type TeamData = z.infer<typeof selectTeamSchema>;
+
+export const selectTeamMemberSchema = createSelectSchema(teamMembersTable);
+export const insertTeamMemberSchema = createInsertSchema(teamMembersTable);
+export type TeamMemberData = z.infer<typeof selectTeamMemberSchema>;
+
+export interface TeamWithMembersData extends TeamData {
+	members: (TeamMemberData & { user: UserData })[];
+}

@@ -87,3 +87,48 @@ export const ordersTable = pgTable('orders', {
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	status: orderStatusEnum('status').default('pending').notNull()
 });
+
+export const teamMemberRoleEnum = pgEnum('team_member_role', ['member', 'leader']);
+
+export const teamsTable = pgTable('teams', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const teamMembersTable = pgTable('team_members', {
+	teamId: integer('team_id')
+		.references(() => teamsTable.id)
+		.notNull(),
+	userId: integer('user_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	role: teamMemberRoleEnum('role').notNull().default('member'),
+	joinedAt: timestamp('joined_at').defaultNow().notNull()
+});
+
+export const teamInvitationStatusEnum = pgEnum('team_invitation_status', [
+	'pending',
+	'accepted',
+	'rejected',
+	'cancelled'
+]);
+
+export const teamInvitationsTable = pgTable('team_invitations', {
+	id: serial('id').primaryKey(),
+	teamId: integer('team_id')
+		.references(() => teamsTable.id)
+		.notNull(),
+	userId: integer('user_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	invitedBy: integer('invited_by')
+		.references(() => usersTable.id)
+		.notNull(),
+	status: teamInvitationStatusEnum('status').notNull().default('pending'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+	responseAt: timestamp('response_at')
+});
