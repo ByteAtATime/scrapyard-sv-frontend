@@ -57,7 +57,6 @@
 						id="amount"
 						name="amount"
 						bind:value={$form.amount}
-						min="1"
 						aria-invalid={$errors.amount ? 'true' : undefined}
 						aria-describedby="amount-error"
 					/>
