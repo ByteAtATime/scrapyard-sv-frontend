@@ -33,7 +33,7 @@
 				</Avatar.Fallback>
 			</Avatar.Root>
 
-			<div class="text-center @md:text-left">
+			<div class="flex flex-col items-center @md:items-start @md:text-left">
 				<p class="font-medium text-foreground">{user.name}</p>
 				<p class="text-sm text-muted-foreground">{user.email}</p>
 
