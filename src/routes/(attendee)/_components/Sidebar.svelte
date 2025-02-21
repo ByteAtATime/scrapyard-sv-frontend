@@ -1,12 +1,17 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import { LayoutDashboard, ShoppingBag, Trophy, UserRoundCog } from 'lucide-svelte';
+	import { LayoutDashboard, ShoppingBag, Trophy, UserRoundCog, Users } from 'lucide-svelte';
 
 	const items = [
 		{
 			title: 'Dashboard',
 			url: '/',
 			icon: LayoutDashboard
+		},
+		{
+			title: 'Teams',
+			url: '/teams',
+			icon: Users
 		},
 		{
 			title: 'Shop',
