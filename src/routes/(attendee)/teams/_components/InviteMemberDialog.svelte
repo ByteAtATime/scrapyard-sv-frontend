@@ -9,7 +9,7 @@
 		DialogFooter,
 		DialogTrigger
 	} from '$lib/components/ui/dialog';
-	import { UserPlus } from 'lucide-svelte';
+	import { UserPlus, Loader2 } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { toast } from 'svelte-sonner';
 	import UserSelect from '$lib/components/user-select/UserSelect.svelte';
@@ -36,8 +36,10 @@
 	const {
 		form: inviteForm,
 		errors,
-		enhance
+		enhance,
+		delayed
 	} = superForm(form, {
+		delayMs: 50,
 		onResult: ({ result }) => {
 			if (result.type === 'success') {
 				toast.success(result.data?.message ?? 'Invitation sent successfully');
@@ -81,14 +83,8 @@
 			<DialogHeader>
 				<DialogTitle>Invite Team Member</DialogTitle>
 				<DialogDescription>
-					Invite a participant to join your team. They will need to accept the invitation. Your team
-					can have up to {maxTeamSize} members.
-					{#if pendingInvitationsCount > 0}
-						You currently have {pendingInvitationsCount} pending invitation{pendingInvitationsCount ===
-						1
-							? ''
-							: 's'}.
-					{/if}
+					<strong>If someone joins your team, they will not be able to leave!</strong> You may have
+					a maximum of {maxTeamSize} members on your team.
 				</DialogDescription>
 			</DialogHeader>
 			<div class="grid gap-4 py-4">
@@ -101,9 +97,14 @@
 				<Button type="button" variant="outline" onclick={() => (open = false)}>Cancel</Button>
 				<Button
 					type="submit"
-					disabled={currentMemberCount + pendingInvitationsCount >= maxTeamSize}
+					disabled={currentMemberCount + pendingInvitationsCount >= maxTeamSize || $delayed}
 				>
-					Send Invitation
+					{#if $delayed}
+						<Loader2 class="mr-2 size-4 animate-spin" />
+						Sending...
+					{:else}
+						Send Invitation
+					{/if}
 				</Button>
 			</DialogFooter>
 		</form>

@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { teamSchema } from '../../organizer/teams/schema';
-import { inviteSchema } from './schema';
+import { inviteSchema, invitationActionSchema } from './schema';
 import { teamsService, teamsRepo } from '$lib/server/teams';
 import { zod } from 'sveltekit-superforms/adapters';
 import { TEAM_CONFIG } from '$lib/server/teams/config';
@@ -74,6 +74,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 			outgoingInvitations: outgoingInvitationsJson,
 			form: await superValidate(zod(teamSchema)),
 			inviteForm: await superValidate(zod(inviteSchema)),
+			acceptForm: await superValidate(zod(invitationActionSchema)),
+			rejectForm: await superValidate(zod(invitationActionSchema)),
+			cancelForm: await superValidate(zod(invitationActionSchema)),
 			maxTeamSize: TEAM_CONFIG.MAX_MEMBERS
 		};
 	} catch (err) {
@@ -184,19 +187,19 @@ export const actions: Actions = {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
-		const data = await request.formData();
-		const invitationId = Number(data.get('invitationId'));
+		const form = await superValidate(request, zod(invitationActionSchema));
 
-		if (!invitationId) {
-			return fail(400, { error: 'Invitation ID is required' });
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		try {
-			await teamsService.cancelTeamInvitation(invitationId);
-			return message(await superValidate(zod(teamSchema)), 'Invitation cancelled successfully');
+			await teamsService.cancelTeamInvitation(form.data.invitationId);
+			return message(form, 'Invitation cancelled successfully');
 		} catch (err) {
 			console.error('Failed to cancel invitation:', err);
 			return fail(500, {
+				form,
 				error: err instanceof Error ? err.message : 'Failed to cancel invitation'
 			});
 		}
@@ -210,19 +213,19 @@ export const actions: Actions = {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
-		const data = await request.formData();
-		const invitationId = Number(data.get('invitationId'));
+		const form = await superValidate(request, zod(invitationActionSchema));
 
-		if (!invitationId) {
-			return fail(400, { error: 'Invitation ID is required' });
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		try {
-			await teamsService.acceptTeamInvitation(invitationId);
-			return message(await superValidate(zod(teamSchema)), 'Invitation accepted successfully');
+			await teamsService.acceptTeamInvitation(form.data.invitationId);
+			return message(form, 'Invitation accepted successfully');
 		} catch (err) {
 			console.error('Failed to accept invitation:', err);
 			return fail(500, {
+				form,
 				error: err instanceof Error ? err.message : 'Failed to accept invitation'
 			});
 		}
@@ -236,19 +239,19 @@ export const actions: Actions = {
 			return fail(401, { error: 'Unauthorized' });
 		}
 
-		const data = await request.formData();
-		const invitationId = Number(data.get('invitationId'));
+		const form = await superValidate(request, zod(invitationActionSchema));
 
-		if (!invitationId) {
-			return fail(400, { error: 'Invitation ID is required' });
+		if (!form.valid) {
+			return fail(400, { form });
 		}
 
 		try {
-			await teamsService.rejectTeamInvitation(invitationId);
-			return message(await superValidate(zod(teamSchema)), 'Invitation rejected successfully');
+			await teamsService.rejectTeamInvitation(form.data.invitationId);
+			return message(form, 'Invitation rejected successfully');
 		} catch (err) {
 			console.error('Failed to reject invitation:', err);
 			return fail(500, {
+				form,
 				error: err instanceof Error ? err.message : 'Failed to reject invitation'
 			});
 		}

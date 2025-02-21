@@ -14,12 +14,13 @@
 		DialogFooter,
 		DialogTrigger
 	} from '$lib/components/ui/dialog';
-	import { Plus } from 'lucide-svelte';
+	import { Plus, Loader2 } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 
 	let { data, open = $bindable(false) }: { data: PageData; open?: boolean } = $props();
 
-	const { form, errors, enhance, submitting } = superForm(data.form, {
+	const { form, errors, enhance, delayed } = superForm(data.form, {
+		delayMs: 50,
 		onResult: ({ result }) => {
 			if (result.type === 'success') {
 				toast.success('Team created successfully!');
@@ -83,8 +84,13 @@
 			</div>
 			<DialogFooter>
 				<Button type="button" variant="outline" onclick={() => (open = false)}>Cancel</Button>
-				<Button type="submit" disabled={$submitting}>
-					{$submitting ? 'Creating...' : 'Create Team'}
+				<Button type="submit" disabled={$delayed}>
+					{#if $delayed}
+						<Loader2 class="mr-2 size-4 animate-spin" />
+						Creating...
+					{:else}
+						Create Team
+					{/if}
 				</Button>
 			</DialogFooter>
 		</form>

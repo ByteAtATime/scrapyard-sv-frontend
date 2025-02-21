@@ -1,14 +1,53 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Users } from 'lucide-svelte';
+	import { Users, Loader2 } from 'lucide-svelte';
 	import { Card } from '$lib/components/ui/card';
 	import CreateTeamDialog from './_components/CreateTeamDialog.svelte';
 	import InviteMemberDialog from './_components/InviteMemberDialog.svelte';
 	import { Badge } from '$lib/components/ui/badge';
-	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import { superForm } from 'sveltekit-superforms/client';
 
 	let { data } = $props();
+
+	const { enhance: acceptEnhance, delayed: acceptDelayed } = superForm(data.acceptForm, {
+		delayMs: 50,
+		onResult: ({ result }) => {
+			if (result.type === 'success') {
+				toast.success('Invitation accepted successfully');
+			} else if (result.type === 'error') {
+				toast.error('Failed to accept invitation', {
+					description: result.error.message
+				});
+			}
+		}
+	});
+
+	const { enhance: rejectEnhance, delayed: rejectDelayed } = superForm(data.rejectForm, {
+		delayMs: 50,
+		onResult: ({ result }) => {
+			if (result.type === 'success') {
+				toast.success('Invitation rejected successfully');
+			} else if (result.type === 'error') {
+				toast.error('Failed to reject invitation', {
+					description: result.error.message
+				});
+			}
+		}
+	});
+
+	const { enhance: cancelEnhance, delayed: cancelDelayed } = superForm(data.cancelForm, {
+		delayMs: 50,
+		onResult: ({ result }) => {
+			if (result.type === 'success') {
+				toast.success('Invitation cancelled successfully');
+			} else if (result.type === 'error') {
+				toast.error('Failed to cancel invitation', {
+					description: result.error.message
+				});
+			}
+		}
+	});
 
 	const formatDate = (date: Date | null) => {
 		if (!date) return 'Unknown';
@@ -139,23 +178,16 @@
 										</p>
 									</div>
 									{#if invitation.status === 'pending'}
-										<form
-											method="POST"
-											action="?/cancelInvitation"
-											use:enhance={() => {
-												return async ({ result }) => {
-													if (result.type === 'success') {
-														toast.success('Invitation cancelled successfully');
-													} else if (result.type === 'error') {
-														toast.error('Failed to cancel invitation', {
-															description: result.error.message
-														});
-													}
-												};
-											}}
-										>
+										<form method="POST" action="?/cancelInvitation" use:cancelEnhance>
 											<input type="hidden" name="invitationId" value={invitation.id} />
-											<Button type="submit" variant="ghost" size="sm">Cancel</Button>
+											<Button type="submit" variant="ghost" size="sm" disabled={$cancelDelayed}>
+												{#if $cancelDelayed}
+													<Loader2 class="mr-2 size-4 animate-spin" />
+													Cancelling...
+												{:else}
+													Cancel
+												{/if}
+											</Button>
 										</form>
 									{/if}
 								</div>
@@ -177,41 +209,27 @@
 								<p class="text-sm text-muted-foreground">{invitation.team.description}</p>
 							</div>
 							<div class="flex items-center gap-2">
-								<form
-									method="POST"
-									action="?/rejectInvitation"
-									use:enhance={() => {
-										return async ({ result }) => {
-											if (result.type === 'success') {
-												toast.success('Invitation rejected successfully');
-											} else if (result.type === 'error') {
-												toast.error('Failed to reject invitation', {
-													description: result.error.message
-												});
-											}
-										};
-									}}
-								>
+								<form method="POST" action="?/rejectInvitation" use:rejectEnhance>
 									<input type="hidden" name="invitationId" value={invitation.id} />
-									<Button type="submit" variant="outline">Reject</Button>
+									<Button type="submit" variant="outline" disabled={$rejectDelayed}>
+										{#if $rejectDelayed}
+											<Loader2 class="mr-2 size-4 animate-spin" />
+											Rejecting...
+										{:else}
+											Reject
+										{/if}
+									</Button>
 								</form>
-								<form
-									method="POST"
-									action="?/acceptInvitation"
-									use:enhance={() => {
-										return async ({ result }) => {
-											if (result.type === 'success') {
-												toast.success('Invitation accepted successfully');
-											} else if (result.type === 'error') {
-												toast.error('Failed to accept invitation', {
-													description: result.error.message
-												});
-											}
-										};
-									}}
-								>
+								<form method="POST" action="?/acceptInvitation" use:acceptEnhance>
 									<input type="hidden" name="invitationId" value={invitation.id} />
-									<Button type="submit">Accept</Button>
+									<Button type="submit" disabled={$acceptDelayed}>
+										{#if $acceptDelayed}
+											<Loader2 class="mr-2 size-4 animate-spin" />
+											Accepting...
+										{:else}
+											Accept
+										{/if}
+									</Button>
 								</form>
 							</div>
 						</div>
