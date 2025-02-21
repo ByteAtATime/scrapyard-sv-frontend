@@ -47,9 +47,9 @@
 				toast.error('Failed to send invitation', {
 					description: result.error.message
 				});
-			} else {
+			} else if (result.type === 'failure') {
 				toast.error('Failed to send invitation', {
-					description: 'Please try again later'
+					description: result.data?.error ?? 'Please try again later'
 				});
 			}
 		}

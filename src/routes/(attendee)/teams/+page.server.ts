@@ -115,7 +115,7 @@ export const actions: Actions = {
 			console.error('Failed to create team:', err);
 			return fail(500, {
 				form,
-				error: { message: 'Failed to create team. Please try again later.' }
+				error: 'Failed to create team. Please try again later.'
 			});
 		}
 	},
@@ -139,29 +139,29 @@ export const actions: Actions = {
 		// Get user's team
 		const userTeams = await teamsService.getTeamsByUserId(userId);
 		if (userTeams.length === 0) {
-			return message(form, 'You are not a member of any team', { status: 403 });
+			return fail(403, { form, error: 'You are not a member of any team' });
 		}
 
 		// Get the team and verify user is a leader
 		const team = await teamsService.getTeamById(userTeams[0].id);
 		if (!team) {
-			return message(form, 'Team not found', { status: 404 });
+			return fail(404, { form, error: 'Team not found' });
 		}
 
 		const member = team.members.find((m) => m.userId === userId);
 		if (!member || member.role !== 'leader') {
-			return message(form, 'Only team leaders can invite members', { status: 403 });
+			return fail(403, { form, error: 'Only team leaders can invite members' });
 		}
 
 		// Check if team is full including pending invitations
 		const teamInvitations = await teamsService.getTeamInvitationsByTeamId(team.id);
 		const pendingInvitations = teamInvitations.filter((inv) => inv.status === 'pending');
 		if (team.members.length + pendingInvitations.length >= TEAM_CONFIG.MAX_MEMBERS) {
-			return message(
+			return fail(400, {
 				form,
-				'Team is full including pending invitations. Cancel some pending invitations to invite new members.',
-				{ status: 400 }
-			);
+				error:
+					'Team is full including pending invitations. Cancel some pending invitations to invite new members.'
+			});
 		}
 
 		try {
@@ -169,8 +169,9 @@ export const actions: Actions = {
 			return message(form, 'Invitation sent successfully');
 		} catch (err) {
 			console.error('Failed to invite member:', err);
-			return message(form, err instanceof Error ? err.message : 'Failed to invite member', {
-				status: 500
+			return fail(500, {
+				form,
+				error: err instanceof Error ? err.message : 'Failed to invite member'
 			});
 		}
 	},
