@@ -64,7 +64,7 @@
 			Invite Member
 		</Button>
 	</DialogTrigger>
-	<DialogContent class="sm:max-w-[425px]">
+	<DialogContent>
 		<DialogHeader>
 			<DialogTitle>Invite Team Member</DialogTitle>
 			<DialogDescription>

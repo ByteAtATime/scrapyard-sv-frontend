@@ -40,7 +40,7 @@
 			Create Team
 		</Button>
 	</DialogTrigger>
-	<DialogContent class="sm:max-w-[425px]">
+	<DialogContent>
 		<form method="POST" action="?/create" use:enhance>
 			<DialogHeader>
 				<DialogTitle>Create Team</DialogTitle>

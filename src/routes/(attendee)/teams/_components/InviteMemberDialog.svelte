@@ -78,7 +78,7 @@
 			Invite Member
 		</Button>
 	</DialogTrigger>
-	<DialogContent class="sm:max-w-[425px]">
+	<DialogContent>
 		<form method="POST" action="?/invite" use:enhance>
 			<DialogHeader>
 				<DialogTitle>Invite Team Member</DialogTitle>
