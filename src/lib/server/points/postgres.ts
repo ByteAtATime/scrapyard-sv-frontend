@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { pointTransactionsTable, usersTable } from '../db/schema';
-import { eq, sql, and, not } from 'drizzle-orm';
+import { eq, sql, and, not, sum, or, lt } from 'drizzle-orm';
 import type {
 	IPointsRepo,
 	PointsStatistics,
@@ -169,9 +169,19 @@ export class PostgresPointsRepo implements IPointsRepo {
 			.select({
 				userId: usersTable.id,
 				name: usersTable.name,
-				totalPoints: sql<number>`COALESCE((SELECT SUM(${pointTransactionsTable.amount}) FROM ${pointTransactionsTable} WHERE ${pointTransactionsTable.userId} = ${usersTable.id} AND ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted')), 0)`
+				totalPoints: sum(pointTransactionsTable.amount).mapWith(Number).as('totalPoints')
 			})
-			.from(usersTable);
+			.from(usersTable)
+			.innerJoin(pointTransactionsTable, eq(usersTable.id, pointTransactionsTable.userId))
+			.where(
+				or(
+					eq(pointTransactionsTable.status, 'approved'),
+					and(eq(pointTransactionsTable.status, 'pending'), lt(pointTransactionsTable.amount, 0))
+				)
+			)
+			.groupBy(usersTable.id, usersTable.name)
+			.orderBy(sql`"totalPoints" DESC`)
+			.limit(10);
 
 		const leaderboard: LeaderboardEntry[] = rawLeaderboard.map((user) => ({
 			...user,
@@ -183,7 +193,18 @@ export class PostgresPointsRepo implements IPointsRepo {
 				const transactions = await db
 					.select()
 					.from(pointTransactionsTable)
-					.where(eq(pointTransactionsTable.userId, user.userId));
+					.where(
+						and(
+							eq(pointTransactionsTable.userId, user.userId),
+							or(
+								eq(pointTransactionsTable.status, 'approved'),
+								and(
+									eq(pointTransactionsTable.status, 'pending'),
+									lt(pointTransactionsTable.amount, 0)
+								)
+							)
+						)
+					);
 				user.transactions = transactions;
 			})
 		);

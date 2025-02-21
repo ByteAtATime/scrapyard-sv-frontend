@@ -10,7 +10,7 @@
 </script>
 
 <div class="flex flex-col gap-2">
-	{#each leaderboard as entry, i (entry.name)}
+	{#each leaderboard as entry, i (entry.userId)}
 		<LeaderboardUser
 			name={entry.name}
 			rank={i + 1}
