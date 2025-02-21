@@ -84,7 +84,8 @@ describe('PointsService', () => {
 
 	describe('reviewTransaction', () => {
 		it('should review transaction through repository', async () => {
-			const mockTransaction = { id: 1 } as PointTransactionData;
+			const mockTransaction = { id: 1, userId: 1, amount: 100 } as PointTransactionData;
+			vi.mocked(mockRepo.getTransactionById).mockResolvedValueOnce(mockTransaction);
 			vi.mocked(mockRepo.reviewTransaction).mockResolvedValueOnce(mockTransaction);
 
 			const result = await service.reviewTransaction(1, {
@@ -93,10 +94,34 @@ describe('PointsService', () => {
 			});
 
 			expect(result).toEqual(mockTransaction);
+			expect(mockRepo.getTransactionById).toHaveBeenCalledWith(1);
 			expect(mockRepo.reviewTransaction).toHaveBeenCalledWith(1, {
 				reviewerId: 2,
 				status: 'approved'
 			});
+		});
+
+		it('should throw error when transaction is not found', async () => {
+			vi.mocked(mockRepo.getTransactionById).mockResolvedValueOnce(null);
+
+			await expect(
+				service.reviewTransaction(1, {
+					reviewerId: 2,
+					status: 'approved'
+				})
+			).rejects.toThrow('Transaction not found');
+		});
+
+		it('should throw error when reviewer tries to approve their own transaction', async () => {
+			const mockTransaction = { id: 1, userId: 1, amount: 100 } as PointTransactionData;
+			vi.mocked(mockRepo.getTransactionById).mockResolvedValueOnce(mockTransaction);
+
+			await expect(
+				service.reviewTransaction(1, {
+					reviewerId: 1,
+					status: 'approved'
+				})
+			).rejects.toThrow('Cannot approve your own transaction');
 		});
 	});
 
