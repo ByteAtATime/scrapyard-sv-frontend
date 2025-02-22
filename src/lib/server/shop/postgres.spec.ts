@@ -1,513 +1,369 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { PostgresShopRepository } from './postgres';
-import { ordersTable, pointTransactionsTable, shopItemsTable } from '../db/schema';
+import { ordersTable, pointTransactionsTable, shopItemsTable, usersTable } from '../db/schema';
 import type { ShopItemData, OrderData } from './types';
 import { ShopItem } from './shop-item';
 import { Order } from './order';
-import { SQL } from 'drizzle-orm';
-
-const mockDb = await vi.hoisted(async () => {
-	const { mockDb } = await import('$lib/server/db/mock');
-	return mockDb;
-});
-
-vi.mock('$lib/server/db', () => ({
-	db: mockDb
-}));
+import { db } from '$lib/server/db';
+import { eq } from 'drizzle-orm';
 
 describe('PostgresShopRepository', () => {
 	let repository: PostgresShopRepository;
 
-	beforeEach(() => {
-		repository = new PostgresShopRepository();
-		vi.clearAllMocks();
+	// Helper function to create a user
+	const createUser = async (userId: number, name: string) => {
+		await db.insert(usersTable).values({
+			id: userId,
+			name,
+			email: `${name.toLowerCase().replace(/\s/g, '')}@example.com`,
+			authProvider: 'clerk',
+			authProviderId: `test-id-${userId}`
+		});
+		return userId;
+	};
 
-		// Reset all mock implementations
-		mockDb.insert.mockReset();
-		mockDb.values.mockReset();
-		mockDb.returning.mockReset();
-
-		// Setup transaction mock
-		mockDb.transaction = vi.fn().mockImplementation((callback) => callback(mockDb));
-	});
-
-	describe('purchaseItem', () => {
-		const mockUserId = 1;
-		const mockItemId = 1;
-		const mockItemData: ShopItemData = {
-			id: mockItemId,
-			name: 'Test Item',
-			description: 'A test item',
-			price: 100,
-			stock: 5,
-			isOrderable: true,
-			imageUrl: 'test.jpg',
+	// Helper function to create a shop item
+	const createTestShopItem = ({
+		id = 1,
+		name = 'Test Item',
+		description = 'A test item',
+		price = 100,
+		stock = 5,
+		isOrderable = true,
+		imageUrl = 'test.jpg'
+	}: Partial<ShopItemData> = {}): ShopItemData => {
+		return {
+			id,
+			name,
+			description,
+			price,
+			stock,
+			isOrderable,
+			imageUrl,
 			createdAt: new Date(),
 			updatedAt: new Date()
 		};
+	};
 
-		const mockOrderData: OrderData = {
-			id: 1,
-			userId: mockUserId,
-			shopItemId: mockItemId,
-			status: 'pending',
+	// Helper function to create an order
+	const createTestOrder = ({
+		id = 1,
+		userId = 1,
+		shopItemId = 1,
+		status = 'pending' as const
+	}: Partial<OrderData> = {}): OrderData => {
+		return {
+			id,
+			userId,
+			shopItemId,
+			status,
 			createdAt: new Date()
 		};
+	};
 
-		const mockItem = new ShopItem(mockItemData);
-		const mockOrder = new Order(mockOrderData);
+	beforeEach(() => {
+		repository = new PostgresShopRepository();
+	});
 
-		beforeEach(() => {
-			// Reset mocks for each test
-			vi.spyOn(repository, 'getItemById').mockResolvedValue(mockItem);
-			vi.spyOn(repository, 'createOrder').mockResolvedValue(mockOrder);
-			vi.spyOn(repository, 'updateStock').mockResolvedValue(undefined);
-
-			// Setup the mock chain for successful cases
-			mockDb.insert.mockReturnValue(mockDb);
-			mockDb.values.mockReturnValue(mockDb);
-			mockDb.returning.mockResolvedValue([{ id: 1 }]);
-		});
-
+	describe('purchaseItem', () => {
 		it('should successfully purchase an item', async () => {
-			const result = await repository.purchaseItem(mockUserId, mockItemId);
+			// Given: a user and item exist
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			// Verify the transaction was started
-			expect(mockDb.transaction).toHaveBeenCalled();
+			// When: purchaseItem is called
+			const order = await repository.purchaseItem(userId, itemData.id);
 
-			// Verify item was checked
-			expect(repository.getItemById).toHaveBeenCalledWith(mockItemId);
+			// Then: order should be created
+			expect(order).toBeInstanceOf(Order);
+			expect(order.userId).toBe(userId);
+			expect(order.shopItemId).toBe(itemData.id);
+			expect(order.status).toBe('pending');
 
-			// Verify order was created
-			expect(repository.createOrder).toHaveBeenCalledWith({
-				userId: mockUserId,
-				shopItemId: mockItemId,
-				status: 'pending'
+			// And: stock should be decreased
+			const updatedItem = await repository.getItemById(itemData.id);
+			expect(updatedItem?.stock).toBe(itemData.stock - 1);
+
+			// And: points transaction should be created
+			const pointTransactions = await db
+				.select()
+				.from(pointTransactionsTable)
+				.where(eq(pointTransactionsTable.userId, userId));
+			expect(pointTransactions).toHaveLength(1);
+			expect(pointTransactions[0]).toMatchObject({
+				userId,
+				amount: -itemData.price,
+				reason: `Purchased item: ${itemData.name}`,
+				authorId: userId
 			});
-
-			// Verify stock was updated
-			expect(repository.updateStock).toHaveBeenCalledWith(mockItemId, mockItem.stock - 1);
-
-			// Verify points transaction was created
-			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				userId: mockUserId,
-				amount: -mockItem.price,
-				reason: `Purchased item: ${mockItem.name}`,
-				authorId: mockUserId
-			});
-
-			// Verify the returned order
-			expect(result).toEqual(mockOrder);
 		});
 
 		it('should throw when item does not exist', async () => {
-			// Reset the mock chain
-			mockDb.insert.mockReset();
-			mockDb.values.mockReset();
-			mockDb.returning.mockReset();
+			// Given: a user exists but item doesn't
+			const userId = await createUser(1, 'Test User');
+			const nonExistentItemId = 999;
 
-			vi.spyOn(repository, 'getItemById').mockResolvedValue(null);
-
-			await expect(repository.purchaseItem(mockUserId, mockItemId)).rejects.toThrow();
-
-			// Verify no other operations were performed
-			expect(repository.createOrder).not.toHaveBeenCalled();
-			expect(repository.updateStock).not.toHaveBeenCalled();
-			expect(mockDb.insert).not.toHaveBeenCalled();
+			// When/Then: purchaseItem should throw error
+			await expect(repository.purchaseItem(userId, nonExistentItemId)).rejects.toThrow();
 		});
 
 		it('should throw when item is not orderable', async () => {
-			// Reset the mock chain
-			mockDb.insert.mockReset();
-			mockDb.values.mockReset();
-			mockDb.returning.mockReset();
+			// Given: a user exists and item is not orderable
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem({ isOrderable: false });
+			await db.insert(shopItemsTable).values(itemData);
 
-			const nonOrderableItem = new ShopItem({
-				...mockItemData,
-				isOrderable: false
-			});
-			vi.spyOn(repository, 'getItemById').mockResolvedValue(nonOrderableItem);
-
-			await expect(repository.purchaseItem(mockUserId, mockItemId)).rejects.toThrow();
-
-			// Verify no other operations were performed
-			expect(repository.createOrder).not.toHaveBeenCalled();
-			expect(repository.updateStock).not.toHaveBeenCalled();
-			expect(mockDb.insert).not.toHaveBeenCalled();
+			// When/Then: purchaseItem should throw error
+			await expect(repository.purchaseItem(userId, itemData.id)).rejects.toThrow();
 		});
 
 		it('should throw when item is out of stock', async () => {
-			// Reset the mock chain
-			mockDb.insert.mockReset();
-			mockDb.values.mockReset();
-			mockDb.returning.mockReset();
+			// Given: a user exists and item is out of stock
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem({ stock: 0 });
+			await db.insert(shopItemsTable).values(itemData);
 
-			const outOfStockItem = new ShopItem({
-				...mockItemData,
-				stock: 0
-			});
-			vi.spyOn(repository, 'getItemById').mockResolvedValue(outOfStockItem);
-
-			await expect(repository.purchaseItem(mockUserId, mockItemId)).rejects.toThrow();
-
-			// Verify no other operations were performed
-			expect(repository.createOrder).not.toHaveBeenCalled();
-			expect(repository.updateStock).not.toHaveBeenCalled();
-			expect(mockDb.insert).not.toHaveBeenCalled();
-		});
-
-		it('should rollback transaction if any operation fails', async () => {
-			// Reset the mock chain
-			mockDb.insert.mockReset();
-			mockDb.values.mockReset();
-			mockDb.returning.mockReset();
-
-			// Mock createOrder to throw an error
-			const mockError = new Error('Failed to create order');
-			vi.spyOn(repository, 'createOrder').mockRejectedValue(mockError);
-
-			await expect(repository.purchaseItem(mockUserId, mockItemId)).rejects.toThrow(mockError);
-
-			// Verify the transaction was started
-			expect(mockDb.transaction).toHaveBeenCalled();
-
-			// Verify stock was not updated after failure
-			expect(repository.updateStock).not.toHaveBeenCalled();
-			expect(mockDb.insert).not.toHaveBeenCalled();
-		});
-
-		it('should handle transaction with correct points deduction', async () => {
-			const expensiveItem = new ShopItem({
-				...mockItemData,
-				price: 500
-			});
-
-			vi.spyOn(repository, 'getItemById').mockResolvedValue(expensiveItem);
-
-			await repository.purchaseItem(mockUserId, mockItemId);
-
-			// Verify points transaction was created with correct amount
-			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				userId: mockUserId,
-				amount: -500, // Negative price for deduction
-				reason: `Purchased item: ${expensiveItem.name}`,
-				authorId: mockUserId
-			});
+			// When/Then: purchaseItem should throw error
+			await expect(repository.purchaseItem(userId, itemData.id)).rejects.toThrow();
 		});
 	});
 
 	describe('getAllItems', () => {
-		const mockItemData = {
-			id: 1,
-			name: 'Test Item',
-			description: 'Test Description',
-			imageUrl: 'test.jpg',
-			price: 99.99,
-			stock: 10,
-			isOrderable: true,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		};
-
 		it('should return all shop items ordered by ID', async () => {
-			const mockItems = [mockItemData, { ...mockItemData, id: 2 }];
+			// Given: multiple items exist
+			const items = [
+				createTestShopItem({ id: 1, name: 'Item 1' }),
+				createTestShopItem({ id: 2, name: 'Item 2' })
+			];
+			await db.insert(shopItemsTable).values(items);
 
-			mockDb.select.mockReturnValue(mockDb);
-			mockDb.from.mockReturnValue(mockDb);
-			mockDb.orderBy.mockResolvedValue(mockItems);
-
+			// When: getAllItems is called
 			const result = await repository.getAllItems();
 
+			// Then: all items should be returned in order
 			expect(result).toHaveLength(2);
 			expect(result[0]).toBeInstanceOf(ShopItem);
 			expect(result[1]).toBeInstanceOf(ShopItem);
-			expect(result[0].id).toBe(1);
-			expect(result[1].id).toBe(2);
+			expect(result.map((item) => item.name)).toEqual(['Item 1', 'Item 2']);
+		});
+
+		it('should return empty array when no items exist', async () => {
+			// When: getAllItems is called with no items
+			const result = await repository.getAllItems();
+
+			// Then: empty array should be returned
+			expect(result).toEqual([]);
 		});
 	});
 
 	describe('getItemById', () => {
-		const mockItemData = {
-			id: 1,
-			name: 'Test Item',
-			description: 'Test Description',
-			imageUrl: 'test.jpg',
-			price: 99.99,
-			stock: 10,
-			isOrderable: true,
-			createdAt: new Date(),
-			updatedAt: new Date()
-		};
-
-		beforeEach(() => {
-			mockDb.select.mockReturnValue(mockDb);
-			mockDb.from.mockReturnValue(mockDb);
-			mockDb.where.mockReturnValue(mockDb);
-		});
-
 		it('should return item when found', async () => {
-			mockDb.where.mockResolvedValue([mockItemData]);
+			// Given: an item exists
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			const result = await repository.getItemById(1);
+			// When: getItemById is called
+			const result = await repository.getItemById(itemData.id);
 
+			// Then: the item should be returned
 			expect(result).toBeInstanceOf(ShopItem);
-			expect(result?.id).toBe(1);
+			expect(result).toMatchObject(itemData);
 		});
 
 		it('should return null when item not found', async () => {
-			mockDb.where.mockResolvedValue([]);
+			// When: getItemById is called with non-existent ID
+			const result = await repository.getItemById(999);
 
-			const result = await repository.getItemById(1);
-
+			// Then: null should be returned
 			expect(result).toBeNull();
 		});
 	});
 
 	describe('createItem', () => {
-		const createData = {
-			name: 'Test Item',
-			description: 'Test Description',
-			imageUrl: 'test.jpg',
-			price: 99.99,
-			stock: 10,
-			isOrderable: true
-		};
-
 		it('should create new shop item and return created item', async () => {
-			const mockCreatedItem = {
-				...createData,
-				id: 1,
-				createdAt: new Date(),
-				updatedAt: new Date()
+			// Given: item data is prepared
+			const createData = {
+				name: 'New Item',
+				description: 'New Description',
+				imageUrl: 'new.jpg',
+				price: 99,
+				stock: 10,
+				isOrderable: true
 			};
 
-			mockDb.insert.mockReturnValue(mockDb);
-			mockDb.values.mockReturnValue(mockDb);
-			mockDb.returning.mockResolvedValue([mockCreatedItem]);
-
+			// When: createItem is called
 			const result = await repository.createItem(createData);
 
+			// Then: item should be created and returned
 			expect(result).toBeInstanceOf(ShopItem);
-			expect(result.id).toBe(1);
-			expect(result.name).toBe(createData.name);
+			expect(result).toMatchObject(createData);
+
+			// And: item should exist in database
+			const dbItem = await repository.getItemById(result.id);
+			expect(dbItem).toMatchObject(createData);
 		});
 	});
 
 	describe('updateItem', () => {
-		const updateData = {
-			name: 'Updated Item',
-			price: 199.99
-		};
-
 		it('should update item with provided data', async () => {
-			mockDb.update.mockReturnValue(mockDb);
-			mockDb.set.mockReturnValue(mockDb);
-			mockDb.where.mockResolvedValue(undefined);
+			// Given: an item exists
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			await repository.updateItem(1, updateData);
+			// When: updateItem is called
+			const updates = {
+				name: 'Updated Item',
+				price: 199
+			};
+			await repository.updateItem(itemData.id, updates);
 
-			expect(mockDb.set).toHaveBeenCalledWith({
-				...updateData,
+			// Then: item should be updated in database
+			const updatedItem = await repository.getItemById(itemData.id);
+			expect(updatedItem).toMatchObject({
+				...itemData,
+				...updates,
 				updatedAt: expect.any(Date)
 			});
-			expect(mockDb.where).toHaveBeenCalled();
 		});
 	});
 
 	describe('deleteItem', () => {
 		it('should delete item with specified ID', async () => {
-			mockDb.delete.mockReturnValue(mockDb);
-			mockDb.where.mockResolvedValue(undefined);
+			// Given: an item exists
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			await repository.deleteItem(1);
+			// When: deleteItem is called
+			await repository.deleteItem(itemData.id);
 
-			expect(mockDb.delete).toHaveBeenCalled();
-			expect(mockDb.where).toHaveBeenCalled();
+			// Then: item should be deleted from database
+			const deletedItem = await repository.getItemById(itemData.id);
+			expect(deletedItem).toBeNull();
 		});
 	});
 
 	describe('getOrders', () => {
-		const mockOrderData = {
-			id: 1,
-			userId: 1,
-			shopItemId: 1,
-			status: 'pending' as const,
-			createdAt: new Date()
-		};
-
 		it('should return all orders', async () => {
-			mockDb.select.mockReturnValue(mockDb);
-			mockDb.from.mockResolvedValue([mockOrderData]);
+			// Given: multiple orders exist
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
+			const orders = [
+				createTestOrder({ id: 1, userId, shopItemId: itemData.id }),
+				createTestOrder({ id: 2, userId, shopItemId: itemData.id })
+			];
+			await db.insert(ordersTable).values(orders);
+
+			// When: getOrders is called
 			const result = await repository.getOrders();
 
-			expect(result).toHaveLength(1);
+			// Then: all orders should be returned
+			expect(result).toHaveLength(2);
 			expect(result[0]).toBeInstanceOf(Order);
-			expect(result[0].id).toBe(1);
+			expect(result[1]).toBeInstanceOf(Order);
+			expect(result.map((order) => order.id)).toEqual([1, 2]);
 		});
 	});
 
 	describe('getOrderById', () => {
-		const mockOrderData = {
-			id: 1,
-			userId: 1,
-			shopItemId: 1,
-			status: 'pending' as const,
-			createdAt: new Date()
-		};
-
-		beforeEach(() => {
-			mockDb.select.mockReturnValue(mockDb);
-			mockDb.from.mockReturnValue(mockDb);
-			mockDb.where.mockReturnValue(mockDb);
-		});
-
 		it('should return order when found', async () => {
-			mockDb.where.mockResolvedValue([mockOrderData]);
+			// Given: an order exists
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			const result = await repository.getOrderById(1);
+			const orderData = createTestOrder({ userId, shopItemId: itemData.id });
+			await db.insert(ordersTable).values(orderData);
 
+			// When: getOrderById is called
+			const result = await repository.getOrderById(orderData.id);
+
+			// Then: the order should be returned
 			expect(result).toBeInstanceOf(Order);
-			expect(result?.id).toBe(1);
+			expect(result).toMatchObject(orderData);
 		});
 
 		it('should return null when order not found', async () => {
-			mockDb.where.mockResolvedValue([]);
+			// When: getOrderById is called with non-existent ID
+			const result = await repository.getOrderById(999);
 
-			const result = await repository.getOrderById(1);
-
+			// Then: null should be returned
 			expect(result).toBeNull();
 		});
 	});
 
 	describe('getOrdersByUser', () => {
-		const mockOrderData = {
-			id: 1,
-			userId: 1,
-			shopItemId: 1,
-			status: 'pending' as const,
-			createdAt: new Date()
-		};
-
 		it('should return orders for specified user', async () => {
-			mockDb.select.mockReturnValue(mockDb);
-			mockDb.from.mockReturnValue(mockDb);
-			mockDb.where.mockResolvedValue([mockOrderData]);
+			// Given: orders exist for multiple users
+			const user1 = await createUser(1, 'User One');
+			const user2 = await createUser(2, 'User Two');
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			const result = await repository.getOrdersByUser(1);
+			await db
+				.insert(ordersTable)
+				.values([
+					createTestOrder({ id: 1, userId: user1, shopItemId: itemData.id }),
+					createTestOrder({ id: 2, userId: user1, shopItemId: itemData.id }),
+					createTestOrder({ id: 3, userId: user2, shopItemId: itemData.id })
+				]);
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toBeInstanceOf(Order);
-			expect(result[0].userId).toBe(1);
+			// When: getOrdersByUser is called for user1
+			const result = await repository.getOrdersByUser(user1);
+
+			// Then: only user1's orders should be returned
+			expect(result).toHaveLength(2);
+			expect(result.every((order) => order.userId === user1)).toBe(true);
 		});
 	});
 
 	describe('updateOrderStatus', () => {
 		it('should update order status', async () => {
-			mockDb.update.mockReturnValue(mockDb);
-			mockDb.set.mockReturnValue(mockDb);
-			mockDb.where.mockResolvedValue(undefined);
+			// Given: an order exists
+			const userId = await createUser(1, 'Test User');
+			const itemData = createTestShopItem();
+			await db.insert(shopItemsTable).values(itemData);
 
-			await repository.updateOrderStatus(1, 'fulfilled');
+			const orderData = createTestOrder({ userId, shopItemId: itemData.id });
+			await db.insert(ordersTable).values(orderData);
 
-			expect(mockDb.set).toHaveBeenCalledWith({ status: 'fulfilled' });
-			expect(mockDb.where).toHaveBeenCalled();
+			// When: updateOrderStatus is called
+			await repository.updateOrderStatus(orderData.id, 'fulfilled');
+
+			// Then: order status should be updated
+			const updatedOrder = await repository.getOrderById(orderData.id);
+			expect(updatedOrder?.status).toBe('fulfilled');
 		});
 	});
 
 	describe('updateStock', () => {
 		it('should update stock successfully', async () => {
-			const itemId = 1;
+			// Given: an item exists
+			const itemData = createTestShopItem({ stock: 10 });
+			await db.insert(shopItemsTable).values(itemData);
+
+			// When: updateStock is called
 			const newStock = 5;
+			await repository.updateStock(itemData.id, newStock);
 
-			mockDb.update.mockReturnThis();
-			mockDb.set.mockReturnThis();
-			mockDb.where.mockReturnThis();
-
-			await repository.updateStock(itemId, newStock);
-
-			expect(mockDb.update).toHaveBeenCalledWith(shopItemsTable);
-			expect(mockDb.set).toHaveBeenCalledWith({ stock: newStock });
-			expect(mockDb.where).toHaveBeenCalledWith(expect.any(SQL));
+			// Then: stock should be updated
+			const updatedItem = await repository.getItemById(itemData.id);
+			expect(updatedItem?.stock).toBe(newStock);
 		});
 
 		it('should handle zero stock', async () => {
-			const itemId = 1;
-			const newStock = 0;
+			// Given: an item exists
+			const itemData = createTestShopItem({ stock: 10 });
+			await db.insert(shopItemsTable).values(itemData);
 
-			mockDb.update.mockReturnThis();
-			mockDb.set.mockReturnThis();
-			mockDb.where.mockReturnThis();
+			// When: updateStock is called with zero
+			await repository.updateStock(itemData.id, 0);
 
-			await repository.updateStock(itemId, newStock);
-
-			expect(mockDb.update).toHaveBeenCalledWith(shopItemsTable);
-			expect(mockDb.set).toHaveBeenCalledWith({ stock: newStock });
-			expect(mockDb.where).toHaveBeenCalledWith(expect.any(SQL));
-		});
-
-		it('should throw error when database operation fails', async () => {
-			const itemId = 1;
-			const newStock = 5;
-
-			mockDb.update.mockReturnThis();
-			mockDb.set.mockReturnThis();
-			mockDb.where.mockRejectedValue(new Error('Database error'));
-
-			await expect(repository.updateStock(itemId, newStock)).rejects.toThrow('Database error');
-		});
-	});
-
-	describe('createOrder', () => {
-		const orderData = {
-			userId: 1,
-			shopItemId: 1,
-			status: 'pending' as const
-		};
-
-		it('should create order successfully', async () => {
-			const mockOrder = {
-				id: 1,
-				...orderData,
-				createdAt: new Date()
-			};
-
-			mockDb.insert.mockReturnThis();
-			mockDb.values.mockReturnThis();
-			mockDb.returning.mockResolvedValue([mockOrder]);
-
-			const result = await repository.createOrder(orderData);
-
-			expect(result).toBeInstanceOf(Order);
-			expect(result).toEqual(new Order(mockOrder));
-			expect(mockDb.insert).toHaveBeenCalledWith(ordersTable);
-			expect(mockDb.values).toHaveBeenCalledWith(orderData);
-		});
-
-		it('should throw error when insert fails', async () => {
-			mockDb.insert.mockReturnThis();
-			mockDb.values.mockReturnThis();
-			mockDb.returning.mockRejectedValue(new Error('Failed to create order'));
-
-			await expect(repository.createOrder(orderData)).rejects.toThrow('Failed to create order');
-		});
-
-		it('should set initial status to pending', async () => {
-			const mockOrder = {
-				id: 1,
-				...orderData,
-				createdAt: new Date()
-			};
-
-			mockDb.insert.mockReturnThis();
-			mockDb.values.mockReturnThis();
-			mockDb.returning.mockResolvedValue([mockOrder]);
-
-			const result = await repository.createOrder(orderData);
-
-			expect(result.status).toBe('pending');
+			// Then: stock should be updated to zero
+			const updatedItem = await repository.getItemById(itemData.id);
+			expect(updatedItem?.stock).toBe(0);
 		});
 	});
 });

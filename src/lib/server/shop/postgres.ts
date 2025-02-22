@@ -9,8 +9,11 @@ import type {
 import { ItemNotFoundError, ItemNotOrderableError, InsufficientStockError } from './types';
 import { ShopItem } from './shop-item';
 import { Order } from './order';
-import { db } from '../db';
+import { db } from '$lib/server/db';
 import { ordersTable, shopItemsTable, pointTransactionsTable } from '../db/schema';
+
+// TODO: is there a better way to do this?
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export class PostgresShopRepository implements IShopRepo {
 	async getAllItems(): Promise<ShopItem[]> {
@@ -18,14 +21,17 @@ export class PostgresShopRepository implements IShopRepo {
 		return items.map((item) => new ShopItem(item));
 	}
 
-	async getItemById(id: number): Promise<ShopItem | null> {
-		const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, id));
+	async getItemById(id: number, tx?: Transaction): Promise<ShopItem | null> {
+		const query = tx ? tx.select().from(shopItemsTable) : db.select().from(shopItemsTable);
+		const items = await query.where(eq(shopItemsTable.id, id));
 		const item = items[0];
 		return item ? new ShopItem(item) : null;
 	}
 
-	async updateStock(id: number, newStock: number): Promise<void> {
-		await db.update(shopItemsTable).set({ stock: newStock }).where(eq(shopItemsTable.id, id));
+	async updateStock(id: number, newStock: number, tx?: Transaction): Promise<void> {
+		const query = tx ? tx.update(shopItemsTable) : db.update(shopItemsTable);
+
+		await query.set({ stock: newStock }).where(eq(shopItemsTable.id, id));
 	}
 
 	async createItem(data: CreateShopItemData): Promise<ShopItem> {
@@ -44,8 +50,9 @@ export class PostgresShopRepository implements IShopRepo {
 		await db.delete(shopItemsTable).where(eq(shopItemsTable.id, id));
 	}
 
-	async createOrder(data: CreateOrderData): Promise<Order> {
-		const [order] = await db.insert(ordersTable).values(data).returning();
+	async createOrder(data: CreateOrderData, tx?: Transaction): Promise<Order> {
+		const query = tx ? tx.insert(ordersTable) : db.insert(ordersTable);
+		const [order] = await query.values(data).returning();
 		return new Order(order);
 	}
 
@@ -70,8 +77,8 @@ export class PostgresShopRepository implements IShopRepo {
 	}
 
 	async purchaseItem(userId: number, itemId: number): Promise<Order> {
-		return db.transaction(async (tx) => {
-			const item = await this.getItemById(itemId);
+		return await db.transaction(async (tx) => {
+			const item = await this.getItemById(itemId, tx);
 
 			if (!item) {
 				throw new ItemNotFoundError(itemId);
@@ -85,13 +92,16 @@ export class PostgresShopRepository implements IShopRepo {
 				throw new InsufficientStockError(item.name);
 			}
 
-			const order = await this.createOrder({
-				userId,
-				shopItemId: itemId,
-				status: 'pending'
-			});
+			const order = await this.createOrder(
+				{
+					userId,
+					shopItemId: itemId,
+					status: 'pending'
+				},
+				tx
+			);
 
-			await this.updateStock(itemId, item.stock - 1);
+			await this.updateStock(itemId, item.stock - 1, tx);
 
 			await tx.insert(pointTransactionsTable).values({
 				userId: userId,

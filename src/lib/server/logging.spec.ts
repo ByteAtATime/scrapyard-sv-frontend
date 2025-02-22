@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Logger } from './logging';
 vi.mock('$app/environment', () => ({
 	dev: false
@@ -16,16 +16,11 @@ describe('Logger', () => {
 
 	beforeEach(() => {
 		vi.resetModules();
-		vi.clearAllMocks();
 
 		vi.spyOn(console, 'debug').mockImplementation(() => {});
 		vi.spyOn(console, 'info').mockImplementation(() => {});
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		vi.spyOn(console, 'error').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {

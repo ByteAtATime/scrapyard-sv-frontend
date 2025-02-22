@@ -2,6 +2,7 @@ import type { IAuthProvider, IAuthState, IUserRepository } from './types';
 import type { UserData } from '$lib/server/db/types';
 import { User } from './user';
 import { clerkClient } from 'clerk-sveltekit/server';
+import type { User as ClerkUser } from '@clerk/backend';
 
 export class AuthService implements IAuthProvider {
 	constructor(
@@ -57,7 +58,13 @@ export class AuthService implements IAuthProvider {
 	}
 
 	private async createUserFromClerk(clerkUserId: string): Promise<void> {
-		const clerkUser = await clerkClient.users.getUser(clerkUserId);
+		let clerkUser: ClerkUser;
+		try {
+			clerkUser = await clerkClient.users.getUser(clerkUserId);
+		} catch (error) {
+			console.error('Error creating user from Clerk', error);
+			return;
+		}
 		await this.userRepo.create({
 			name: clerkUser.fullName ?? clerkUser.firstName + ' ' + clerkUser.lastName,
 			email: clerkUser.emailAddresses[0].emailAddress,

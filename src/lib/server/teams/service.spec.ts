@@ -11,7 +11,6 @@ describe('TeamsService', () => {
 	beforeEach(() => {
 		mockRepo = new MockTeamsRepo();
 		service = new TeamsService(mockRepo);
-		vi.clearAllMocks();
 	});
 
 	describe('createTeam', () => {

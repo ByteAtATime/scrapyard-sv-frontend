@@ -1,37 +1,36 @@
-import { beforeEach, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, vi } from 'vitest';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import * as schema from './src/lib/server/db/schema';
+import { db, client } from './src/lib/server/db';
+import { sql } from 'drizzle-orm';
+import { applyMigrations } from './src/lib/server/db/migrate';
 
-const mockDb = await vi.hoisted(async () => {
-	const { mockDb } = await import('./src/lib/server/db/mock');
-	return mockDb;
+vi.mock('$lib/server/db', async (importOriginal) => {
+	const client = new PGlite();
+	const db = drizzle(client, { schema });
+	return {
+		...(await importOriginal<typeof import('./src/lib/server/db')>()),
+		db,
+		client
+	};
 });
 
-vi.mock('$lib/server/db', () => ({
-	db: mockDb
-}));
+// Apply migrations before each test
+beforeEach(async () => {
+	await applyMigrations();
+});
 
-beforeEach(() => {
+// Clean up the database after each test
+afterEach(async () => {
+	await db.execute(sql`drop schema if exists public cascade`);
+	await db.execute(sql`create schema public`);
+	await db.execute(sql`drop schema if exists drizzle cascade`);
+
 	vi.clearAllMocks();
+});
 
-	// reset implementation and return type of all functions
-	// TODO: is this the best way to do this?
-	mockDb.select.mockReturnThis();
-	mockDb.insert.mockReturnThis();
-	mockDb.update.mockReturnThis();
-	mockDb.delete.mockReturnThis();
-	mockDb.from.mockReturnThis();
-	mockDb.where.mockReturnThis();
-	mockDb.limit.mockReturnThis();
-	mockDb.execute.mockClear();
-	mockDb.returning.mockReturnThis();
-	mockDb.values.mockReturnThis();
-	mockDb.set.mockReturnThis();
-	mockDb.transaction.mockImplementation((cb) => cb(mockDb));
-	mockDb.query.usersTable.findFirst.mockClear();
-	mockDb.query.usersTable.findMany.mockClear();
-	mockDb.query.pointTransactionsTable.findFirst.mockClear();
-	mockDb.query.pointTransactionsTable.findMany.mockClear();
-	mockDb.query.eventsTable.findFirst.mockClear();
-	mockDb.query.eventsTable.findMany.mockClear();
-	mockDb.query.eventAttendanceTable.findFirst.mockClear();
-	mockDb.query.eventAttendanceTable.findMany.mockClear();
+afterAll(async () => {
+	// TODO: typescript doesn't know that client is a PGlite
+	await (client as unknown as PGlite).close();
 });

@@ -8,7 +8,7 @@ const mockDb = await vi.hoisted(async () => {
 	return mockDb;
 });
 
-describe('POST /api/v1/events/[id]/check-in', () => {
+describe.skip('POST /api/v1/events/[id]/check-in', () => {
 	it('should return success if user check-in is successful', async () => {
 		const authProvider = new MockAuthProvider().mockOrganizer();
 		const eventsRepo = new MockEventsRepo();

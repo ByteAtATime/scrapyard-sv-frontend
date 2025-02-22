@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '$lib/server/db';
 import type { EventData, EventAttendanceData } from '../db/types';
 import type { IEventsRepo, EventStatistics, UpcomingEvent, UserEventStatistics } from './types';
 import { eventAttendanceTable, eventsTable, pointTransactionsTable } from '../db/schema';

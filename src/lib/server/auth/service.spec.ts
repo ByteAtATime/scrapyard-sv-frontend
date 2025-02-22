@@ -46,7 +46,6 @@ describe('AuthService', () => {
 		};
 
 		service = new AuthService(authState, userRepo);
-		vi.clearAllMocks();
 	});
 
 	describe('isAuthenticated', () => {

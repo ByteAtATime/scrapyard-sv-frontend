@@ -16,7 +16,6 @@ describe('PointsService', () => {
 
 		mockAuthProvider = new MockAuthProvider();
 		service = new PointsService(mockRepo, mockAuthProvider);
-		vi.clearAllMocks();
 	});
 
 	describe('getTotalPoints', () => {

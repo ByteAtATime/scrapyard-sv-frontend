@@ -1,483 +1,547 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { PostgresEventsRepo } from './postgres';
-import { Event } from './event';
 import {
 	eventAttendanceTable,
 	eventsTable,
 	pointTransactionsTable,
 	usersTable
 } from '../db/schema';
+import { db } from '$lib/server/db';
+import { eq } from 'drizzle-orm';
+import type { EventData, EventAttendanceData } from '../db/types';
+import { Event } from './event';
 import { MockAuthProvider } from '../auth/mock';
-import type { EventData } from '../db/types';
-import { SQL } from 'drizzle-orm';
-
-const mockDb = await vi.hoisted(async () => {
-	const { mockDb } = await import('../db/mock');
-	return mockDb;
-});
-
-vi.mock('../db', () => ({
-	db: mockDb
-}));
 
 describe('PostgresEventsRepo', () => {
-	let repo: PostgresEventsRepo;
+	let repository: PostgresEventsRepo;
 
-	beforeEach(async () => {
-		repo = new PostgresEventsRepo();
-		vi.clearAllMocks();
+	// Helper function to create a user
+	const createUser = async (userId: number, name: string) => {
+		await db.insert(usersTable).values({
+			id: userId,
+			name,
+			email: `${name.toLowerCase().replace(/\s/g, '')}@example.com`,
+			authProvider: 'clerk',
+			authProviderId: `test-id-${userId}`
+		});
+		return userId;
+	};
+
+	// Helper function to create an event
+	const createTestEvent = ({
+		id = 1,
+		name = 'Test Event',
+		description = 'Test Description',
+		time = new Date(),
+		attendancePoints = 100,
+		contactOrganizerId = null
+	}: Partial<EventData> = {}): EventData => {
+		return {
+			id,
+			name,
+			description,
+			time,
+			attendancePoints,
+			contactOrganizerId
+		};
+	};
+
+	// Helper function to create event attendance
+	const createTestAttendance = (
+		eventId: number,
+		userId: number,
+		checkedInBy: number
+	): EventAttendanceData => {
+		return {
+			eventId,
+			userId,
+			checkedInBy,
+			checkInTime: new Date(),
+			awardPointsTransactionId: null
+		};
+	};
+
+	beforeEach(() => {
+		repository = new PostgresEventsRepo();
 	});
 
 	describe('createEvent', () => {
 		it('should create a new event and return its ID', async () => {
+			// Given: event data is prepared
+			const eventData = createTestEvent();
+			const expectedId = 1;
 			const authProvider = new MockAuthProvider();
-			const event = new Event(
-				{
-					id: 0,
-					name: 'New Event',
-					description: 'Event description',
-					time: new Date('2024-08-01T12:00:00Z'),
-					attendancePoints: 15,
-					contactOrganizerId: 1
-				},
-				authProvider
-			);
+			const event = new Event(eventData, authProvider);
 
-			mockDb.returning.mockResolvedValue([{ id: 42 }]);
-			authProvider.getUserById.mockResolvedValue({ id: 1, name: 'Organizer' });
+			// When: createEvent is called
+			const id = await repository.createEvent(event);
 
-			const eventId = await repo.createEvent(event);
+			// Then: the event should be created with the correct data
+			expect(id).toBe(expectedId);
 
-			expect(eventId).toBe(42);
-			expect(mockDb.insert).toHaveBeenCalledWith(eventsTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				name: 'New Event',
-				description: 'Event description',
-				time: event.time,
-				attendancePoints: 15,
-				contactOrganizerId: 1
+			// And: the event should be retrievable from the database
+			const dbEvent = await repository.getEventById(id);
+			expect(dbEvent).toMatchObject({
+				name: eventData.name,
+				description: eventData.description,
+				attendancePoints: eventData.attendancePoints
 			});
-			expect(mockDb.returning).toHaveBeenCalledWith({ id: eventsTable.id });
 		});
 
 		it('should handle null contactOrganizerId', async () => {
+			// Given: event data is prepared with null organizer
 			const authProvider = new MockAuthProvider();
 			const event = new Event(
-				{
+				createTestEvent({
 					id: 0,
 					name: 'Event without organizer',
 					description: 'Description',
-					time: new Date(),
 					attendancePoints: 5,
 					contactOrganizerId: null
-				},
+				}),
 				authProvider
 			);
-			mockDb.returning.mockResolvedValue([{ id: 43 }]);
 
-			await repo.createEvent(event);
+			// When: createEvent is called
+			const id = await repository.createEvent(event);
 
-			expect(mockDb.values).toHaveBeenCalledWith(
-				expect.objectContaining({
-					contactOrganizerId: undefined
-				})
-			);
+			// Then: the event should be created with null contactOrganizerId
+			const dbEvent = await repository.getEventById(id);
+			expect(dbEvent?.contactOrganizerId).toBeNull();
 		});
 	});
 
 	describe('getEventById', () => {
-		it('should return event data if event exists', async () => {
-			const eventId = 1;
-			const expectedEvent: EventData = {
-				id: eventId,
-				name: 'Existing Event',
-				description: 'Existing event description',
-				time: new Date(),
-				attendancePoints: 20,
-				contactOrganizerId: 2
-			};
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(expectedEvent);
+		it('should return null for non-existent event', async () => {
+			// Given: no events exist
+			const nonExistentId = 999;
 
-			const event = await repo.getEventById(eventId);
+			// When: getEventById is called with a non-existent ID
+			const event = await repository.getEventById(nonExistentId);
 
-			expect(event).toEqual(expectedEvent);
-			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.anything()
-			});
+			// Then: null should be returned
+			expect(event).toBeNull();
 		});
 
-		it('should return null if event does not exist', async () => {
-			const eventId = 999;
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
+		it('should return the event with the specified ID', async () => {
+			// Given: an event exists
+			const eventData = createTestEvent();
+			await db.insert(eventsTable).values(eventData);
 
-			const event = await repo.getEventById(eventId);
+			// When: getEventById is called
+			const event = await repository.getEventById(eventData.id);
 
-			expect(event).toBeNull();
-			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.anything()
-			});
+			// Then: the correct event should be returned
+			expect(event).toMatchObject(eventData);
+		});
+
+		it('should use cache for subsequent calls', async () => {
+			// Given: an event exists
+			const eventData = createTestEvent();
+			await db.insert(eventsTable).values(eventData);
+
+			// When: getEventById is called multiple times
+			const firstCall = await repository.getEventById(eventData.id);
+
+			// And: the event is updated in the database
+			await db
+				.update(eventsTable)
+				.set({ name: 'Updated Name' })
+				.where(eq(eventsTable.id, eventData.id));
+
+			const secondCall = await repository.getEventById(eventData.id);
+
+			// Then: both calls should return the same (cached) data
+			expect(firstCall).toEqual(secondCall);
+			expect(secondCall?.name).toBe(eventData.name);
 		});
 	});
 
 	describe('getEvents', () => {
-		it('should return an array of event data', async () => {
-			const expectedEvents: EventData[] = [
-				{
-					id: 1,
-					name: 'Event 1',
-					description: 'Description 1',
-					time: new Date(),
-					attendancePoints: 10,
-					contactOrganizerId: 1
-				},
-				{
-					id: 2,
-					name: 'Event 2',
-					description: 'Description 2',
-					time: new Date(),
-					attendancePoints: 15,
-					contactOrganizerId: 2
-				}
+		it('should return all events', async () => {
+			// Given: multiple events exist
+			const events = [
+				createTestEvent({ id: 1, name: 'Event 1' }),
+				createTestEvent({ id: 2, name: 'Event 2' }),
+				createTestEvent({ id: 3, name: 'Event 3' })
 			];
-			mockDb.query.eventsTable.findMany.mockResolvedValue(expectedEvents);
+			await db.insert(eventsTable).values(events);
 
-			const events = await repo.getEvents();
+			// When: getEvents is called
+			const result = await repository.getEvents();
 
-			expect(events).toEqual(expectedEvents);
-			expect(mockDb.query.eventsTable.findMany).toHaveBeenCalled();
+			// Then: all events should be returned
+			expect(result).toHaveLength(3);
+			expect(result.map((e) => e.name)).toEqual(['Event 1', 'Event 2', 'Event 3']);
 		});
 
-		it('should return an empty array if no events exist', async () => {
-			mockDb.query.eventsTable.findMany.mockResolvedValue([]);
+		it('should return empty array when no events exist', async () => {
+			// When: getEvents is called with no events in database
+			const result = await repository.getEvents();
 
-			const events = await repo.getEvents();
-
-			expect(events).toEqual([]);
-			expect(mockDb.query.eventsTable.findMany).toHaveBeenCalled();
+			// Then: an empty array should be returned
+			expect(result).toEqual([]);
 		});
 	});
 
 	describe('updateEvent', () => {
 		it('should update an existing event', async () => {
-			const eventId = 1;
+			// Given: an event exists
+			const eventData = createTestEvent();
+			await db.insert(eventsTable).values(eventData);
+
+			// When: updateEvent is called with updates
 			const updates = { description: 'Updated description', attendancePoints: 25 };
-			mockDb.query.eventsTable.findFirst.mockResolvedValue({
-				id: eventId,
-				name: 'Event to Update'
-			});
-			mockDb.update(eventsTable).set(updates).where.mockResolvedValue([]);
+			await repository.updateEvent(eventData.id, updates);
 
-			await repo.updateEvent(eventId, updates);
-
-			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.anything()
+			// Then: the event should be updated in the database
+			const updatedEvent = await repository.getEventById(eventData.id);
+			expect(updatedEvent).toMatchObject({
+				...eventData,
+				...updates
 			});
-			expect(mockDb.update).toHaveBeenCalledWith(eventsTable);
-			expect(mockDb.set).toHaveBeenCalledWith(updates);
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
 		});
 
 		it('should throw an error if event to update is not found', async () => {
-			const eventId = 999;
+			// Given: no event exists
+			const nonExistentId = 999;
 			const updates = { description: 'Updated description' };
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
 
-			await expect(repo.updateEvent(eventId, updates)).rejects.toThrow('Event not found');
-			expect(mockDb.update).not.toHaveBeenCalled();
+			// When/Then: updateEvent should throw error
+			await expect(repository.updateEvent(nonExistentId, updates)).rejects.toThrow(
+				'Event not found'
+			);
 		});
 	});
 
 	describe('checkInUser', () => {
-		it('should check in a user to an event and award points if attendancePoints > 0', async () => {
-			const eventId = 1;
-			const userId = 101;
-			const authorId = 201;
-			const attendancePoints = 10;
-			const eventData: EventData = {
-				id: eventId,
-				name: 'Point Event',
-				description: 'Event with points',
-				time: new Date(),
-				attendancePoints,
-				contactOrganizerId: null
-			};
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(eventData);
-			mockDb.values.mockResolvedValue([]);
+		it('should check in user and award points', async () => {
+			// Given: an event and user exist
+			const userId = await createUser(1, 'Test User');
+			const authorId = await createUser(2, 'Author User');
+			const eventData = createTestEvent({ attendancePoints: 100 });
+			await db.insert(eventsTable).values(eventData);
 
-			await repo.checkInUser(eventId, userId, authorId);
+			// When: checkInUser is called
+			await repository.checkInUser(eventData.id, userId, authorId);
 
-			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.anything()
+			// Then: attendance should be recorded
+			const attendance = await repository.getAttendanceByEvent(eventData.id);
+			expect(attendance).toHaveLength(1);
+			expect(attendance[0]).toMatchObject({
+				eventId: eventData.id,
+				userId,
+				checkedInBy: authorId
 			});
-			expect(mockDb.transaction).toHaveBeenCalled();
-			expect(mockDb.insert).toHaveBeenCalledTimes(2);
-			expect(mockDb.insert).toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.insert).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				userId: userId,
-				amount: attendancePoints,
-				reason: `Attended event: ${eventData.name}`,
-				authorId: authorId,
+
+			// And: points should be awarded
+			const pointTransactions = await db
+				.select()
+				.from(pointTransactionsTable)
+				.where(eq(pointTransactionsTable.userId, userId));
+			expect(pointTransactions).toHaveLength(1);
+			expect(pointTransactions[0]).toMatchObject({
+				amount: eventData.attendancePoints,
 				status: 'approved'
 			});
-			expect(mockDb.values).toHaveBeenCalledWith({
-				eventId: eventId,
-				userId: userId,
-				checkedInBy: authorId
-			});
 		});
 
-		it('should check in a user to an event without awarding points if attendancePoints is 0', async () => {
-			const eventId = 2;
-			const userId = 102;
-			const authorId = 202;
-			const attendancePoints = 0;
-			const eventData: EventData = {
-				id: eventId,
-				name: 'Free Event',
-				description: 'Event without points',
-				time: new Date(),
-				attendancePoints: attendancePoints,
-				contactOrganizerId: null
-			};
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(eventData);
-			mockDb.transaction.mockImplementation(async (cb) => await cb(mockDb));
-			mockDb.values.mockResolvedValue([]);
+		it('should not award points if attendancePoints is 0', async () => {
+			// Given: an event exists with 0 attendance points
+			const userId = await createUser(1, 'Test User');
+			const authorId = await createUser(2, 'Author User');
+			const eventData = createTestEvent({ attendancePoints: 0 });
+			await db.insert(eventsTable).values(eventData);
 
-			await repo.checkInUser(eventId, userId, authorId);
+			// When: checkInUser is called
+			await repository.checkInUser(eventData.id, userId, authorId);
 
-			expect(mockDb.query.eventsTable.findFirst).toHaveBeenCalledWith({
-				where: expect.any(SQL)
-			});
-			expect(mockDb.transaction).toHaveBeenCalled();
-			expect(mockDb.insert).toHaveBeenCalledTimes(1);
-			expect(mockDb.insert).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.insert).not.toHaveBeenCalledWith(pointTransactionsTable);
-			expect(mockDb.values).toHaveBeenCalledWith({
-				eventId: eventId,
-				userId: userId,
-				checkedInBy: authorId
-			});
+			// Then: attendance should be recorded
+			const attendance = await repository.getAttendanceByEvent(eventData.id);
+			expect(attendance).toHaveLength(1);
+
+			// But: no points should be awarded
+			const pointTransactions = await db
+				.select()
+				.from(pointTransactionsTable)
+				.where(eq(pointTransactionsTable.userId, userId));
+			expect(pointTransactions).toHaveLength(0);
 		});
 
-		it('should throw an error if event for check-in is not found', async () => {
-			const eventId = 999;
-			const userId = 103;
-			const authorId = 203;
-			mockDb.query.eventsTable.findFirst.mockResolvedValue(undefined);
+		it('should throw error for non-existent event', async () => {
+			// Given: a user exists but event doesn't
+			const userId = await createUser(1, 'Test User');
+			const authorId = await createUser(2, 'Author User');
+			const nonExistentEventId = 999;
 
-			await expect(repo.checkInUser(eventId, userId, authorId)).rejects.toThrow('Event not found');
-			expect(mockDb.transaction).not.toHaveBeenCalled();
+			// When/Then: checkInUser should throw error
+			await expect(repository.checkInUser(nonExistentEventId, userId, authorId)).rejects.toThrow(
+				'Event not found'
+			);
 		});
 	});
 
 	describe('getAttendanceByEvent', () => {
 		it('should return attendance records for a given event ID', async () => {
-			const eventId = 1;
-			const expectedAttendance = [
-				{ eventId: eventId, userId: 101, checkInTime: new Date(), checkedInBy: 201 },
-				{ eventId: eventId, userId: 102, checkInTime: new Date(), checkedInBy: 202 }
-			];
-			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue(expectedAttendance);
+			// Given: an event exists with multiple attendees
+			const eventData = createTestEvent();
+			await db.insert(eventsTable).values(eventData);
 
-			const attendance = await repo.getAttendanceByEvent(eventId);
+			const user1 = await createUser(1, 'User One');
+			const user2 = await createUser(2, 'User Two');
+			const author = await createUser(3, 'Author');
 
-			expect(attendance).toEqual(expectedAttendance);
-			expect(mockDb.select).toHaveBeenCalled();
-			expect(mockDb.from).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
+			await db
+				.insert(eventAttendanceTable)
+				.values([
+					createTestAttendance(eventData.id, user1, author),
+					createTestAttendance(eventData.id, user2, author)
+				]);
+
+			// When: getAttendanceByEvent is called
+			const attendance = await repository.getAttendanceByEvent(eventData.id);
+
+			// Then: all attendance records should be returned
+			expect(attendance).toHaveLength(2);
+			expect(attendance.map((a) => a.userId).sort()).toEqual([user1, user2].sort());
+			expect(attendance.every((a) => a.eventId === eventData.id)).toBe(true);
+			expect(attendance.every((a) => a.checkedInBy === author)).toBe(true);
 		});
 
 		it('should return an empty array if no attendance records found for event', async () => {
-			const eventId = 999;
-			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue([]);
+			// Given: an event exists with no attendees
+			const eventData = createTestEvent();
+			await db.insert(eventsTable).values(eventData);
 
-			const attendance = await repo.getAttendanceByEvent(eventId);
+			// When: getAttendanceByEvent is called
+			const attendance = await repository.getAttendanceByEvent(eventData.id);
 
+			// Then: an empty array should be returned
 			expect(attendance).toEqual([]);
-			expect(mockDb.select).toHaveBeenCalled();
-			expect(mockDb.from).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
 		});
 	});
 
 	describe('getAttendanceByUser', () => {
 		it('should return attendance records for a given user ID', async () => {
-			const userId = 101;
-			const expectedAttendance = [
-				{ eventId: 1, userId: userId, checkInTime: new Date(), checkedInBy: 201 },
-				{ eventId: 2, userId: userId, checkInTime: new Date(), checkedInBy: 202 }
+			// Given: multiple events exist and a user has attended them
+			const userId = await createUser(1, 'Test User');
+			const authorId = await createUser(2, 'Author');
+
+			const events = [
+				createTestEvent({ id: 1, name: 'Event 1' }),
+				createTestEvent({ id: 2, name: 'Event 2' })
 			];
-			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue(expectedAttendance);
+			await db.insert(eventsTable).values(events);
 
-			const attendance = await repo.getAttendanceByUser(userId);
+			await db
+				.insert(eventAttendanceTable)
+				.values([
+					createTestAttendance(1, userId, authorId),
+					createTestAttendance(2, userId, authorId)
+				]);
 
-			expect(attendance).toEqual(expectedAttendance);
-			expect(mockDb.select).toHaveBeenCalled();
-			expect(mockDb.from).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
+			// When: getAttendanceByUser is called
+			const attendance = await repository.getAttendanceByUser(userId);
+
+			// Then: all attendance records should be returned
+			expect(attendance).toHaveLength(2);
+			expect(attendance.every((a) => a.userId === userId)).toBe(true);
+			expect(attendance.map((a) => a.eventId).sort()).toEqual([1, 2]);
 		});
 
 		it('should return an empty array if no attendance records found for user', async () => {
-			const userId = 999;
-			mockDb.select().from(eventAttendanceTable).where.mockResolvedValue([]);
+			// Given: a user exists but hasn't attended any events
+			const userId = await createUser(1, 'No Attendance User');
 
-			const attendance = await repo.getAttendanceByUser(userId);
+			// When: getAttendanceByUser is called
+			const attendance = await repository.getAttendanceByUser(userId);
 
+			// Then: an empty array should be returned
 			expect(attendance).toEqual([]);
-			expect(mockDb.select).toHaveBeenCalled();
-			expect(mockDb.from).toHaveBeenCalledWith(eventAttendanceTable);
-			expect(mockDb.where).toHaveBeenCalledWith(expect.anything());
+		});
+
+		it('should use cache for subsequent calls', async () => {
+			// Given: a user exists with attendance records
+			const userId = await createUser(1, 'Cache Test User');
+			const authorId = await createUser(2, 'Author');
+
+			const event = createTestEvent();
+			await db.insert(eventsTable).values(event);
+			await db
+				.insert(eventAttendanceTable)
+				.values(createTestAttendance(event.id, userId, authorId));
+
+			// When: getAttendanceByUser is called multiple times
+			const firstCall = await repository.getAttendanceByUser(userId);
+
+			// Add another attendance that shouldn't affect cached result
+			const event2 = createTestEvent({ id: 2 });
+			await db.insert(eventsTable).values(event2);
+			await db
+				.insert(eventAttendanceTable)
+				.values(createTestAttendance(event2.id, userId, authorId));
+
+			const secondCall = await repository.getAttendanceByUser(userId);
+
+			// Then: both calls should return the same (cached) data
+			expect(firstCall).toEqual(secondCall);
+			expect(secondCall).toHaveLength(1);
 		});
 	});
 
 	describe('getEventStatistics', () => {
-		it('should return correct statistics when there are events', async () => {
-			mockDb.leftJoin.mockImplementationOnce(() =>
-				Promise.resolve([
-					{
-						totalEvents: 5,
-						totalAttendees: 20,
-						totalAttendance: 50
-					}
-				])
-			);
+		it('should return zero statistics when no events exist', async () => {
+			// When: getEventStatistics is called with no events
+			const stats = await repository.getEventStatistics();
 
-			const result = await repo.getEventStatistics();
-
-			expect(result).toEqual({
-				totalEvents: 5,
-				totalAttendees: 20,
-				averageAttendancePerEvent: 10 // 50 / 5
-			});
-
-			expect(mockDb.select).toHaveBeenCalledWith({
-				totalEvents: expect.any(SQL),
-				totalAttendees: expect.any(SQL),
-				totalAttendance: expect.any(SQL)
-			});
-			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
-			expect(mockDb.leftJoin).toHaveBeenCalledWith(eventAttendanceTable, expect.any(SQL));
-		});
-
-		it('should handle zero events without division errors', async () => {
-			mockDb.leftJoin.mockImplementationOnce(() =>
-				Promise.resolve([
-					{
-						totalEvents: 0,
-						totalAttendees: 0,
-						totalAttendance: 0
-					}
-				])
-			);
-
-			const result = await repo.getEventStatistics();
-
-			expect(result).toEqual({
+			// Then: all statistics should be zero
+			expect(stats).toEqual({
 				totalEvents: 0,
 				totalAttendees: 0,
 				averageAttendancePerEvent: 0
 			});
 		});
+
+		it('should calculate correct statistics for multiple events', async () => {
+			// Given: multiple events and attendances exist
+			const user1 = await createUser(1, 'User One');
+			const user2 = await createUser(2, 'User Two');
+			const user3 = await createUser(3, 'User Three');
+
+			const event1 = createTestEvent({ id: 1, name: 'Event 1' });
+			const event2 = createTestEvent({ id: 2, name: 'Event 2' });
+			await db.insert(eventsTable).values([event1, event2]);
+
+			// User1 attends both events, User2 attends event1, User3 attends event2
+			await db
+				.insert(eventAttendanceTable)
+				.values([
+					createTestAttendance(event1.id, user1, user1),
+					createTestAttendance(event1.id, user2, user1),
+					createTestAttendance(event2.id, user1, user1),
+					createTestAttendance(event2.id, user3, user1)
+				]);
+
+			// When: getEventStatistics is called
+			const stats = await repository.getEventStatistics();
+
+			// Then: statistics should be correctly calculated
+			expect(stats).toEqual({
+				totalEvents: 2,
+				totalAttendees: 3,
+				averageAttendancePerEvent: 2 // 4 total attendances / 2 events
+			});
+		});
 	});
 
 	describe('getUpcomingEvents', () => {
-		it('should return upcoming events that user has not attended', async () => {
-			const now = new Date();
-			const futureDate1 = new Date(now.getTime() + 24 * 60 * 60 * 1000); // tomorrow
-			const futureDate2 = new Date(now.getTime() + 48 * 60 * 60 * 1000); // day after tomorrow
+		it('should return upcoming events for user', async () => {
+			// Given: a user exists with some future events
+			const userId = await createUser(1, 'Test User');
+			const futureDate = new Date();
+			futureDate.setDate(futureDate.getDate() + 1);
 
-			const mockEvents = [
-				{
-					id: 1,
-					name: 'Future Event 1',
-					startTime: futureDate1
-				},
-				{
+			const events = [
+				createTestEvent({ id: 1, name: 'Future Event 1', time: futureDate }),
+				createTestEvent({
 					id: 2,
 					name: 'Future Event 2',
-					startTime: futureDate2
-				}
+					time: new Date(futureDate.getTime() + 86400000)
+				})
 			];
+			await db.insert(eventsTable).values(events);
 
-			mockDb.limit.mockResolvedValueOnce(mockEvents);
+			// When: getUpcomingEvents is called
+			const upcomingEvents = await repository.getUpcomingEvents(userId);
 
-			const upcomingEvents = await repo.getUpcomingEvents(1);
-
+			// Then: future events should be returned
 			expect(upcomingEvents).toHaveLength(2);
-			expect(upcomingEvents[0].id).toBe(1);
-			expect(upcomingEvents[0].name).toBe('Future Event 1');
-			expect(upcomingEvents[0].startTime).toEqual(futureDate1);
-			expect(upcomingEvents[1].id).toBe(2);
-			expect(upcomingEvents[1].name).toBe('Future Event 2');
-			expect(upcomingEvents[1].startTime).toEqual(futureDate2);
-
-			// Verify the query chain
-			expect(mockDb.select).toHaveBeenCalledWith({
-				id: eventsTable.id,
-				name: eventsTable.name,
-				startTime: eventsTable.time
-			});
-			expect(mockDb.from).toHaveBeenCalledWith(eventsTable);
-			expect(mockDb.leftJoin).toHaveBeenCalled();
-			expect(mockDb.where).toHaveBeenCalled();
-			expect(mockDb.orderBy).toHaveBeenCalledWith(eventsTable.time);
-			expect(mockDb.limit).toHaveBeenCalledWith(3);
+			expect(upcomingEvents.map((e) => e.name)).toEqual(['Future Event 1', 'Future Event 2']);
 		});
 
-		it('should return empty array when no upcoming events', async () => {
-			mockDb.limit.mockResolvedValueOnce([]);
+		it('should not return events user is already attending', async () => {
+			// Given: a user exists with future events, some already attended
+			const userId = await createUser(1, 'Test User');
+			const futureDate = new Date();
+			futureDate.setDate(futureDate.getDate() + 1);
 
-			const upcomingEvents = await repo.getUpcomingEvents(1);
-			expect(upcomingEvents).toHaveLength(0);
+			const events = [
+				createTestEvent({ id: 1, name: 'Attended Event', time: futureDate }),
+				createTestEvent({ id: 2, name: 'Unattended Event', time: futureDate })
+			];
+			await db.insert(eventsTable).values(events);
 
-			// Verify the query chain
-			expect(mockDb.select).toHaveBeenCalled();
-			expect(mockDb.from).toHaveBeenCalled();
-			expect(mockDb.leftJoin).toHaveBeenCalled();
-			expect(mockDb.where).toHaveBeenCalled();
-			expect(mockDb.orderBy).toHaveBeenCalled();
-			expect(mockDb.limit).toHaveBeenCalledWith(3);
+			// Mark first event as attended
+			await db.insert(eventAttendanceTable).values(createTestAttendance(1, userId, userId));
+
+			// When: getUpcomingEvents is called
+			const upcomingEvents = await repository.getUpcomingEvents(userId);
+
+			// Then: only unattended future events should be returned
+			expect(upcomingEvents).toHaveLength(1);
+			expect(upcomingEvents[0].name).toBe('Unattended Event');
 		});
 	});
 
 	describe('getUserEventStatistics', () => {
-		it('should return correct statistics for user events', async () => {
-			const mockUser = { id: 1, name: 'Test User' };
-			mockDb.insert(usersTable).values().returning.mockResolvedValueOnce([mockUser]);
+		it('should return zero statistics for user with no attendance', async () => {
+			// Given: a user exists but hasn't attended any events
+			const userId = await createUser(1, 'No Attendance User');
 
-			const mockStats = [
-				{
-					totalEvents: 3,
-					totalAttended: 2
-				}
-			];
+			// When: getUserEventStatistics is called
+			const stats = await repository.getUserEventStatistics(userId);
 
-			mockDb.select().from().leftJoin.mockResolvedValueOnce(mockStats);
-
-			const stats = await repo.getUserEventStatistics(mockUser.id);
-
-			expect(stats.totalEventsAttended).toBe(2);
-			expect(stats.attendanceRate).toBe(2 / 3);
+			// Then: statistics should show zero attendance
+			expect(stats).toEqual({
+				totalEventsAttended: 0,
+				attendanceRate: 0
+			});
 		});
 
-		it('should return zero statistics when user has no events', async () => {
-			const mockUser = { id: 1, name: 'Test User' };
-			mockDb.insert(usersTable).values().returning.mockResolvedValueOnce([mockUser]);
+		it('should calculate correct statistics for user with attendance', async () => {
+			// Given: a user exists with event attendance
+			const userId = await createUser(1, 'Active User');
 
-			const mockStats = [
-				{
-					totalEvents: 0,
-					totalAttended: 0
-				}
+			// Create 3 events, user attends 2
+			const events = [
+				createTestEvent({ id: 1, name: 'Event 1' }),
+				createTestEvent({ id: 2, name: 'Event 2' }),
+				createTestEvent({ id: 3, name: 'Event 3' })
 			];
+			await db.insert(eventsTable).values(events);
 
-			mockDb.select().from().leftJoin.mockResolvedValueOnce(mockStats);
+			// Record attendance for 2 events
+			await db
+				.insert(eventAttendanceTable)
+				.values([createTestAttendance(1, userId, userId), createTestAttendance(2, userId, userId)]);
 
-			const stats = await repo.getUserEventStatistics(mockUser.id);
+			// When: getUserEventStatistics is called
+			const stats = await repository.getUserEventStatistics(userId);
 
-			expect(stats.totalEventsAttended).toBe(0);
-			expect(stats.attendanceRate).toBe(0);
+			// Then: statistics should be correctly calculated
+			expect(stats).toEqual({
+				totalEventsAttended: 2,
+				attendanceRate: 2 / 3 // 2 attended out of 3 total events
+			});
+		});
+
+		it('should use cache for subsequent calls', async () => {
+			// Given: a user exists with event attendance
+			const userId = await createUser(1, 'Cache Test User');
+			await db.insert(eventsTable).values([createTestEvent({ id: 1, name: 'Event 1' })]);
+			await db.insert(eventAttendanceTable).values(createTestAttendance(1, userId, userId));
+
+			// When: getUserEventStatistics is called multiple times
+			const firstStats = await repository.getUserEventStatistics(userId);
+
+			// Add another attendance that shouldn't affect cached result
+			await db.insert(eventsTable).values([createTestEvent({ id: 2, name: 'Event 2' })]);
+			await db.insert(eventAttendanceTable).values(createTestAttendance(2, userId, userId));
+
+			const secondStats = await repository.getUserEventStatistics(userId);
+
+			// Then: both calls should return the same (cached) statistics
+			expect(firstStats).toEqual(secondStats);
 		});
 	});
 });

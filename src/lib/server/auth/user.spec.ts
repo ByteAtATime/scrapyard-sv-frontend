@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { CurrentUser } from './user';
 import { MockAuthProvider } from './mock';
 import { MockPointsRepo } from '../points/mock';
@@ -8,8 +8,6 @@ describe('User', () => {
 	let mockPointsRepo: MockPointsRepo;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-
 		mockAuthProvider = new MockAuthProvider();
 		mockPointsRepo = new MockPointsRepo();
 	});

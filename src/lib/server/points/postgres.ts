@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '$lib/server/db';
 import { pointTransactionsTable, usersTable } from '../db/schema';
 import { eq, sql, and, not, sum, or, lt } from 'drizzle-orm';
 import type {
@@ -34,13 +34,18 @@ export class PostgresPointsRepo implements IPointsRepo {
 		this.logger.debug('Cache miss: getTotalPoints', { userId });
 		const result = await db
 			.select({
-				total: sql<number>`COALESCE(SUM(${pointTransactionsTable.amount}), 0)`
+				total: sql<number>`COALESCE(SUM(
+					CASE 
+						WHEN ${pointTransactionsTable.status} = 'approved' THEN ${pointTransactionsTable.amount}
+						WHEN ${pointTransactionsTable.status} = 'pending' AND ${pointTransactionsTable.amount} < 0 THEN ${pointTransactionsTable.amount}
+						ELSE 0 
+					END
+				), 0)`
 			})
 			.from(pointTransactionsTable)
 			.where(
 				and(
 					eq(pointTransactionsTable.userId, userId),
-					not(eq(pointTransactionsTable.status, 'rejected')),
 					not(eq(pointTransactionsTable.status, 'deleted'))
 				)
 			);
@@ -139,27 +144,39 @@ export class PostgresPointsRepo implements IPointsRepo {
 	}
 
 	async getPointsStatistics(): Promise<PointsStatistics> {
-		const users = await db
+		const userPoints = await db
 			.select({
-				id: usersTable.id,
+				userId: usersTable.id,
 				name: usersTable.name,
-				totalPoints: sql<number>`COALESCE((SELECT SUM(${pointTransactionsTable.amount}) FROM ${pointTransactionsTable} WHERE ${pointTransactionsTable.userId} = ${usersTable.id} AND ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted')), 0)`
+				points: sql<number>`COALESCE(
+					SUM(
+						CASE 
+							WHEN ${pointTransactionsTable.status} = 'approved' THEN ${pointTransactionsTable.amount}
+							WHEN ${pointTransactionsTable.status} = 'pending' AND ${pointTransactionsTable.amount} < 0 THEN ${pointTransactionsTable.amount}
+							ELSE 0 
+						END
+					),
+					0
+				)`
 			})
-			.from(usersTable);
+			.from(usersTable)
+			.leftJoin(pointTransactionsTable, eq(usersTable.id, pointTransactionsTable.userId))
+			.groupBy(usersTable.id, usersTable.name);
 
-		users.sort((a, b) => a.totalPoints - b.totalPoints);
-		const topEarner = users[users.length - 1];
+		userPoints.sort((a, b) => b.points - a.points);
+		const topEarner = userPoints[0] ?? { userId: 0, name: '', points: 0 };
 
-		const totalPointsAwarded = users.reduce((sum, user) => sum + user.totalPoints, 0);
-		const averagePointsPerAttendee = users.length > 0 ? totalPointsAwarded / users.length : 0;
+		const totalPointsAwarded = userPoints.reduce((sum, user) => sum + user.points, 0);
+		const averagePointsPerAttendee =
+			userPoints.length > 0 ? totalPointsAwarded / userPoints.length : 0;
 
 		return {
 			totalPointsAwarded,
 			averagePointsPerAttendee,
 			topEarner: {
-				userId: topEarner?.id ?? 0,
-				name: topEarner?.name ?? '',
-				totalPoints: topEarner?.totalPoints ?? 0
+				userId: topEarner.userId,
+				name: topEarner.name,
+				totalPoints: topEarner.points
 			}
 		};
 	}
@@ -221,22 +238,49 @@ export class PostgresPointsRepo implements IPointsRepo {
 		}
 
 		this.logger.debug('Cache miss: getUserRank', { userId });
-		const result = await db
+
+		// First check if user exists
+		const userExists = await db
+			.select({ exists: sql<boolean>`COUNT(*) > 0` })
+			.from(usersTable)
+			.where(eq(usersTable.id, userId))
+			.then((r) => r[0].exists);
+
+		if (!userExists) {
+			return { rank: 0, totalUsers: 0 };
+		}
+
+		// Get total users count
+		const totalUsers = await db
+			.select({ count: sql<number>`COUNT(*)` })
+			.from(usersTable)
+			.then((r) => r[0].count);
+
+		// Calculate user points and rank
+		const userRanks = await db
 			.select({
-				rank: sql<number>`RANK() OVER (ORDER BY COALESCE(SUM(CASE WHEN ${pointTransactionsTable.status} NOT IN ('rejected', 'deleted') THEN ${pointTransactionsTable.amount} ELSE 0 END), 0) DESC)`,
 				userId: usersTable.id,
-				total: sql<number>`COUNT(*) OVER ()`
+				points: sql<number>`COALESCE(
+					SUM(
+						CASE 
+							WHEN ${pointTransactionsTable.status} = 'approved' THEN ${pointTransactionsTable.amount}
+							WHEN ${pointTransactionsTable.status} = 'pending' AND ${pointTransactionsTable.amount} < 0 THEN ${pointTransactionsTable.amount}
+							ELSE 0 
+						END
+					),
+					0
+				)`
 			})
 			.from(usersTable)
-			.leftJoin(pointTransactionsTable, eq(pointTransactionsTable.userId, usersTable.id))
-			.groupBy(usersTable.id)
-			.having(eq(usersTable.id, userId));
+			.leftJoin(pointTransactionsTable, eq(usersTable.id, pointTransactionsTable.userId))
+			.groupBy(usersTable.id);
 
-		const rank = {
-			rank: result[0]?.rank ?? 0,
-			totalUsers: result[0]?.total ?? 0
-		};
-		this.userRankCache.set(userId, rank);
-		return rank;
+		// Sort users by points to calculate rank
+		userRanks.sort((a, b) => b.points - a.points);
+		const rank = userRanks.findIndex((u) => u.userId === userId) + 1;
+
+		const result = { rank, totalUsers };
+		this.userRankCache.set(userId, result);
+		return result;
 	}
 }
