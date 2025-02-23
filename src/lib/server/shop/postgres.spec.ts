@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PostgresShopRepository } from './postgres';
+import { PostgresShopRepo } from './postgres';
 import { ordersTable, pointTransactionsTable, shopItemsTable, usersTable } from '../db/schema';
 import type { ShopItemData, OrderData } from './types';
 import { ShopItem } from './shop-item';
@@ -7,8 +7,8 @@ import { Order } from './order';
 import { db } from '$lib/server/db';
 import { eq } from 'drizzle-orm';
 
-describe('PostgresShopRepository', () => {
-	let repository: PostgresShopRepository;
+describe('PostgresShopRepo', () => {
+	let repository: PostgresShopRepo;
 
 	// Helper function to create a user
 	const createUser = async (userId: number, name: string) => {
@@ -62,7 +62,7 @@ describe('PostgresShopRepository', () => {
 	};
 
 	beforeEach(() => {
-		repository = new PostgresShopRepository();
+		repository = new PostgresShopRepo();
 	});
 
 	describe('purchaseItem', () => {

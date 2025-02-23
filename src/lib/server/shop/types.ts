@@ -2,6 +2,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type { ordersTable, orderStatusEnum, shopItemsTable } from '../db/schema';
 import type { ShopItem } from './shop-item';
 import type { Order } from './order';
+import type { ApiError } from '$lib/server/endpoints/types';
 
 // Raw data types from database
 export type ShopItemData = InferSelectModel<typeof shopItemsTable>;
@@ -18,6 +19,7 @@ export interface CreateOrderData {
 	status: OrderStatus;
 }
 
+// Domain Errors
 export class ShopError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -27,29 +29,59 @@ export class ShopError extends Error {
 
 export class ItemNotFoundError extends ShopError {
 	constructor(itemId: number) {
-		super(`Item with ID ${itemId} not found.`);
+		super(`Item with ID ${itemId} not found`);
 		this.name = 'ItemNotFoundError';
 	}
 }
 
 export class ItemNotOrderableError extends ShopError {
 	constructor(itemId: number) {
-		super(`Item with ID ${itemId} is not orderable.`);
+		super(`Item with ID ${itemId} is not orderable`);
 		this.name = 'ItemNotOrderableError';
 	}
 }
 
 export class InsufficientStockError extends ShopError {
-	constructor(itemName: string) {
-		super(`Not enough stock for item: ${itemName}`);
+	constructor(itemId: number) {
+		super(`Item with ID ${itemId} is out of stock`);
 		this.name = 'InsufficientStockError';
+	}
+}
+
+export class InsufficientBalanceError extends ShopError {
+	constructor(userId: number, required: number, available: number) {
+		super(
+			`User ${userId} has insufficient balance (required: ${required}, available: ${available})`
+		);
+		this.name = 'InsufficientBalanceError';
 	}
 }
 
 export class OrderNotFoundError extends ShopError {
 	constructor(orderId: number) {
-		super(`Order with ID ${orderId} not found.`);
+		super(`Order with ID ${orderId} not found`);
 		this.name = 'OrderNotFoundError';
+	}
+}
+
+export class OrderNotUpdatableError extends ShopError {
+	constructor(orderId: number, status: OrderStatus) {
+		super(`Order ${orderId} cannot be updated because it is ${status}`);
+		this.name = 'OrderNotUpdatableError';
+	}
+}
+
+export class NotAuthenticatedError extends ShopError {
+	constructor() {
+		super('User is not authenticated');
+		this.name = 'NotAuthenticatedError';
+	}
+}
+
+export class NotOrganizerError extends ShopError {
+	constructor() {
+		super('User is not an organizer');
+		this.name = 'NotOrganizerError';
 	}
 }
 
@@ -82,7 +114,7 @@ export interface IShopService {
 	deleteItem(id: number): Promise<void>;
 
 	// Order operations
-	purchaseItem(userId: number, itemId: number): Promise<Order>;
+	purchaseItem(itemId: number): Promise<Order | ApiError>;
 	getOrders(): Promise<Order[]>;
 	getOrderById(orderId: number): Promise<Order>;
 	getOrdersByUser(userId: number): Promise<Order[]>;

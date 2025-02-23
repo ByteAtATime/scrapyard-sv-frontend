@@ -1,10 +1,10 @@
-import { compose } from '$lib/server/endpoints';
-import { withAuthProvider } from '$lib/server/endpoints/dependencies';
-import { withRouteParams } from '$lib/server/endpoints/validation';
-import { endpoint_GET } from './endpoint';
-import type { RequestHandler, RouteParams } from './$types';
+import { compose, withRouteParams } from '$lib/server/endpoints';
+import { withUserService, withAuthProvider } from '$lib/server/endpoints/dependencies';
+import { endpoint_GET, routeSchema } from './endpoint';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = compose(
 	withAuthProvider(),
-	withRouteParams<RouteParams>()
+	withUserService(),
+	withRouteParams(routeSchema)
 )(endpoint_GET);

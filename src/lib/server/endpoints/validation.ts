@@ -41,12 +41,31 @@ export const withBodySchema = <TDeps extends { body: z.infer<TSchema> }, TSchema
 };
 
 export const withRouteParams = <
-	TParams extends Record<string, string>,
-	TDeps extends { params: Partial<TParams> } = { params: Partial<TParams> }
->(): MiddlewareHandler<Omit<TDeps, 'params'>> => {
+	TParams extends Record<string, string | number>,
+	TDeps extends { params: TParams } = { params: TParams }
+>(
+	routeSchema: z.ZodType<TParams>
+): MiddlewareHandler<Omit<TDeps, 'params'>> => {
 	return async (deps, event, next) => {
-		const params = event.params as Partial<TParams>;
-		return next({ ...deps, params } as TDeps);
+		try {
+			const params = routeSchema.parse(event.params);
+			return next({ ...deps, params } as TDeps);
+		} catch (e) {
+			console.log(e);
+			if (e instanceof z.ZodError) {
+				return json(
+					{
+						error: 'Route parameter validation failed',
+						errors: e.errors.map((err) => ({
+							path: err.path.join('.'),
+							message: err.message
+						}))
+					},
+					{ status: 400 }
+				);
+			}
+			return json({ error: 'Internal server error' }, { status: 500 });
+		}
 	};
 };
 

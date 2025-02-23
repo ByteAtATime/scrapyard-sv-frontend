@@ -1,12 +1,14 @@
 import { redirect } from '@sveltejs/kit';
-import { eventsRepo } from '$lib/server/events';
-import { pointsRepo } from '$lib/server/points';
+import { PostgresEventsRepo } from '$lib/server/events/postgres';
+import { PostgresPointsRepo } from '$lib/server/points';
 import type { PointTransactionData } from '$lib/server/db/types';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 
 export const load = async ({ locals }) => {
 	const authProvider = new ClerkAuthProvider(locals.auth);
 	const userId = await authProvider.getUserId();
+	const eventsRepo = new PostgresEventsRepo();
+	const pointsRepo = new PostgresPointsRepo();
 
 	if (!userId) {
 		return redirect(302, '/login');

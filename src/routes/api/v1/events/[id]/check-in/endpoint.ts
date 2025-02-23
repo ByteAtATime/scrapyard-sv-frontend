@@ -1,61 +1,59 @@
-import type { IAuthProvider } from '$lib/server/auth/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
+import type { EventsService } from '$lib/server/events/service';
+import {
+	NotAuthenticatedError,
+	NotOrganizerError,
+	AlreadyCheckedInError,
+	EventNotFoundError,
+	UserNotFoundError
+} from '$lib/server/events/types';
 import { z } from 'zod';
-import { db } from '$lib/server/db';
-import { eventAttendanceTable } from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
-import type { IEventsRepo } from '$lib/server/events/types';
 
 export const postSchema = z.object({
-	userId: z.number()
+	userId: z.number().int().positive()
+});
+
+export const routeSchema = z.object({
+	id: z.coerce.number().int().positive()
 });
 
 export const endpoint_POST: EndpointHandler<{
-	authProvider: IAuthProvider;
-	eventsRepo: IEventsRepo;
+	eventsService: EventsService;
 	body: z.infer<typeof postSchema>;
-	params: { id: string };
-}> = async ({ authProvider, body, params, eventsRepo }) => {
-	if (!(await authProvider.isOrganizer())) {
-		return {
-			success: false,
-			error: 'Unauthorized'
-		};
-	}
-
-	const authorId = await authProvider.getUserId();
-
-	if (!authorId) {
-		return {
-			success: false,
-			error: 'Unauthorized'
-		};
-	}
-
-	const eventId = parseInt(params.id);
-	if (isNaN(eventId)) {
-		return {
-			success: false,
-			error: 'Invalid event ID'
-		};
-	}
-
+	params: z.infer<typeof routeSchema>;
+}> = async ({ eventsService, body, params }) => {
+	const { id: eventId } = params;
 	const { userId } = body;
 
-	const existing = await db
-		.select()
-		.from(eventAttendanceTable)
-		.where(and(eq(eventAttendanceTable.eventId, eventId), eq(eventAttendanceTable.userId, userId)))
-		.limit(1);
+	try {
+		await eventsService.checkInUser(eventId, userId);
+		return { success: true };
+	} catch (error) {
+		// Map domain errors to HTTP responses
+		if (error instanceof NotAuthenticatedError || error instanceof NotOrganizerError) {
+			return {
+				error: error.message,
+				status: 401
+			};
+		}
+		if (error instanceof EventNotFoundError || error instanceof UserNotFoundError) {
+			return {
+				error: error.message,
+				status: 404
+			};
+		}
+		if (error instanceof AlreadyCheckedInError) {
+			return {
+				error: error.message,
+				status: 400
+			};
+		}
 
-	if (existing.length > 0) {
+		// Unexpected errors
+		console.error('Unexpected error:', error);
 		return {
-			success: false,
-			error: 'User is already checked in'
+			error: 'Internal server error',
+			status: 500
 		};
 	}
-
-	await eventsRepo.checkInUser(eventId, userId, authorId);
-
-	return { success: true };
 };

@@ -1,66 +1,128 @@
 import { describe, it, expect, vi } from 'vitest';
 import { endpoint_POST } from './endpoint';
-import { MockAuthProvider } from '$lib/server/auth/mock';
-import { MockEventsRepo } from '$lib/server/events/mock';
+import type { EventsService } from '$lib/server/events/service';
+import {
+	NotAuthenticatedError,
+	NotOrganizerError,
+	AlreadyCheckedInError,
+	EventNotFoundError,
+	UserNotFoundError
+} from '$lib/server/events/types';
 
-const mockDb = await vi.hoisted(async () => {
-	const { mockDb } = await import('$lib/server/db/mock');
-	return mockDb;
-});
+describe('POST /api/v1/events/[id]/check-in', () => {
+	it('should return success when check-in is successful', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockResolvedValue(undefined)
+		} as unknown as EventsService;
 
-describe.skip('POST /api/v1/events/[id]/check-in', () => {
-	it('should return success if user check-in is successful', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		const eventsRepo = new MockEventsRepo();
-		const params = { id: '1' };
 		const body = { userId: 1 };
-		mockDb.select().from().where().limit.mockResolvedValue([]);
+		const params = { id: 123 };
 
-		const result = await endpoint_POST({ authProvider, eventsRepo, body, params });
+		const result = await endpoint_POST({ eventsService, body, params });
 
 		expect(result).toEqual({ success: true });
-		expect(eventsRepo.checkInUser).toHaveBeenCalledWith(1, 1, 1);
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 1);
 	});
 
-	it('should return error if event ID is invalid', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		const eventsRepo = new MockEventsRepo();
-		const params = { id: 'invalid-id' };
+	it('should return 401 when user is not authenticated', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new NotAuthenticatedError())
+		} as unknown as EventsService;
+
 		const body = { userId: 1 };
+		const params = { id: 123 };
 
-		const result = await endpoint_POST({ authProvider, eventsRepo, body, params });
+		const result = await endpoint_POST({ eventsService, body, params });
 
-		expect(result).toEqual({ success: false, error: 'Invalid event ID' });
-		expect(eventsRepo.checkInUser).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			error: 'User is not authenticated',
+			status: 401
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 1);
 	});
 
-	it('should return error if user is already checked in', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		const eventsRepo = new MockEventsRepo();
-		const params = { id: '1' };
+	it('should return 401 when user is not an organizer', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new NotOrganizerError())
+		} as unknown as EventsService;
+
 		const body = { userId: 1 };
-		mockDb
-			.select()
-			.from()
-			.where()
-			.limit.mockResolvedValue([{ eventId: 1, userId: 1 }]);
+		const params = { id: 123 };
 
-		const result = await endpoint_POST({ authProvider, eventsRepo, body, params });
+		const result = await endpoint_POST({ eventsService, body, params });
 
-		expect(result).toEqual({ success: false, error: 'User is already checked in' });
-		expect(eventsRepo.checkInUser).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			error: 'User is not an organizer',
+			status: 401
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 1);
 	});
 
-	it('should return unauthorized if no author ID', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		authProvider.getUserId.mockResolvedValue(null);
-		const eventsRepo = new MockEventsRepo();
-		const params = { id: '1' };
+	it('should return 404 when event is not found', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new EventNotFoundError(999))
+		} as unknown as EventsService;
+
 		const body = { userId: 1 };
+		const params = { id: 999 };
 
-		const result = await endpoint_POST({ authProvider, eventsRepo, body, params });
+		const result = await endpoint_POST({ eventsService, body, params });
 
-		expect(result).toEqual({ success: false, error: 'Unauthorized' });
-		expect(eventsRepo.checkInUser).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			error: 'Event with ID 999 not found',
+			status: 404
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(999, 1);
+	});
+
+	it('should return 404 when user is not found', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new UserNotFoundError(999))
+		} as unknown as EventsService;
+
+		const body = { userId: 999 };
+		const params = { id: 123 };
+
+		const result = await endpoint_POST({ eventsService, body, params });
+
+		expect(result).toEqual({
+			error: 'User with ID 999 not found',
+			status: 404
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 999);
+	});
+
+	it('should return 400 when user is already checked in', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new AlreadyCheckedInError(1, 123))
+		} as unknown as EventsService;
+
+		const body = { userId: 1 };
+		const params = { id: 123 };
+
+		const result = await endpoint_POST({ eventsService, body, params });
+
+		expect(result).toEqual({
+			error: 'User 1 is already checked in to event 123',
+			status: 400
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 1);
+	});
+
+	it('should return 500 when unexpected error occurs', async () => {
+		const eventsService = {
+			checkInUser: vi.fn().mockRejectedValue(new Error('Database error'))
+		} as unknown as EventsService;
+
+		const body = { userId: 1 };
+		const params = { id: 123 };
+
+		const result = await endpoint_POST({ eventsService, body, params });
+
+		expect(result).toEqual({
+			error: 'Internal server error',
+			status: 500
+		});
+		expect(eventsService.checkInUser).toHaveBeenCalledWith(123, 1);
 	});
 });

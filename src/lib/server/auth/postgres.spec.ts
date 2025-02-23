@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PostgresUserRepository } from './postgres';
+import { PostgresUserRepo } from './postgres';
 import { usersTable } from '$lib/server/db/schema';
 import type { UserData } from '$lib/server/db/types';
 import { db } from '$lib/server/db';
 
-describe('PostgresUserRepository', () => {
-	let repository: PostgresUserRepository;
+describe('PostgresUserRepo', () => {
+	let repository: PostgresUserRepo;
 
 	// Helper function to create a test user
 	const createTestUser = async ({
@@ -29,7 +29,7 @@ describe('PostgresUserRepository', () => {
 	};
 
 	beforeEach(() => {
-		repository = new PostgresUserRepository();
+		repository = new PostgresUserRepo();
 	});
 
 	describe('findByAuthId', () => {

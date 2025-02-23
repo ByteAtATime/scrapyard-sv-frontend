@@ -1,58 +1,69 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { endpoint_GET } from './endpoint';
-import { MockPointsRepo } from '$lib/server/points/mock';
+import type { PointsService } from '$lib/server/points/service';
+import { NotAuthenticatedError, NotOrganizerError } from '$lib/server/points/types';
+import type { LeaderboardEntry } from '$lib/server/points/types';
 
 describe('GET /api/v1/points/leaderboard', () => {
-	it('should return leaderboard data with empty transaction histories when available', async () => {
-		const pointsRepo = new MockPointsRepo();
-		const mockLeaderboard = [
-			{ userId: 1, name: 'Alice', totalPoints: 200, transactions: [] },
-			{ userId: 2, name: 'Bob', totalPoints: 150, transactions: [] }
-		];
-		pointsRepo.getLeaderboard.mockResolvedValue(mockLeaderboard);
+	const mockLeaderboard: LeaderboardEntry[] = [
+		{
+			userId: 1,
+			name: 'Alice',
+			totalPoints: 200,
+			transactions: []
+		},
+		{
+			userId: 2,
+			name: 'Bob',
+			totalPoints: 150,
+			transactions: []
+		}
+	];
 
-		const result = await endpoint_GET({ pointsRepo });
+	it('should return leaderboard data when authorized', async () => {
+		const pointsService = {
+			getLeaderboard: vi.fn().mockResolvedValue(mockLeaderboard)
+		} as unknown as PointsService;
+
+		const result = await endpoint_GET({ pointsService });
 
 		expect(result).toEqual(mockLeaderboard);
-		expect(pointsRepo.getLeaderboard).toHaveBeenCalled();
+		expect(pointsService.getLeaderboard).toHaveBeenCalled();
 	});
 
-	it('should return leaderboard data with populated transaction history', async () => {
-		const pointsRepo = new MockPointsRepo();
-		const mockLeaderboard = [
-			{
-				userId: 1,
-				name: 'Alice',
-				totalPoints: 200,
-				transactions: [
-					{
-						id: 101,
-						amount: 100,
-						reason: 'Award',
-						status: 'approved',
-						createdAt: '2023-10-01T12:00:00Z'
-					},
-					{
-						id: 102,
-						amount: 100,
-						reason: 'Bonus',
-						status: 'approved',
-						createdAt: '2023-10-02T12:00:00Z'
-					}
-				]
-			}
-		];
-		pointsRepo.getLeaderboard.mockResolvedValue(mockLeaderboard);
+	it('should return 401 when user is not authenticated', async () => {
+		const pointsService = {
+			getLeaderboard: vi.fn().mockRejectedValue(new NotAuthenticatedError())
+		} as unknown as PointsService;
 
-		const result = await endpoint_GET({ pointsRepo });
-		expect(result).toEqual(mockLeaderboard);
+		const result = await endpoint_GET({ pointsService });
+
+		expect(result).toEqual({
+			error: 'User is not authenticated',
+			status: 401
+		});
 	});
 
-	it('should return an empty leaderboard when no data', async () => {
-		const pointsRepo = new MockPointsRepo();
-		pointsRepo.getLeaderboard.mockResolvedValue([]);
+	it('should return 401 when user is not an organizer', async () => {
+		const pointsService = {
+			getLeaderboard: vi.fn().mockRejectedValue(new NotOrganizerError())
+		} as unknown as PointsService;
 
-		const result = await endpoint_GET({ pointsRepo });
+		const result = await endpoint_GET({ pointsService });
+
+		expect(result).toEqual({
+			error: 'User is not an organizer',
+			status: 401
+		});
+	});
+
+	it('should return empty array when no data exists', async () => {
+		const pointsService = {
+			getLeaderboard: vi.fn().mockResolvedValue([])
+		} as unknown as PointsService;
+
+		const result = await endpoint_GET({ pointsService });
+
 		expect(result).toEqual([]);
 	});
 });

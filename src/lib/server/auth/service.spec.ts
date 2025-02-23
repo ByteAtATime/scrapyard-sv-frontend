@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthService } from './service';
-import type { IAuthState, IUserRepository } from './types';
+import type { IAuthState, IUserRepo } from './types';
 import type { UserData } from '$lib/server/db/types';
 import { User } from './user';
 import { clerkClient } from 'clerk-sveltekit/server';
@@ -16,7 +16,7 @@ vi.mock('clerk-sveltekit/server', () => ({
 
 describe('AuthService', () => {
 	let authState: IAuthState;
-	let userRepo: IUserRepository;
+	let userRepo: IUserRepo;
 	let service: AuthService;
 
 	const mockClerkUser: Partial<ClerkUser> = {

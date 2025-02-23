@@ -75,11 +75,13 @@ describe('withBodySchema', () => {
 });
 
 describe('withRouteParams', () => {
-	it('should pass route parameters to next handler', async () => {
-		const middleware = withRouteParams<
-			{ id: string; slug: string },
-			{ params: { id: string; slug: string } }
-		>();
+	const routeSchema = z.object({
+		id: z.coerce.number(),
+		slug: z.string().optional()
+	});
+
+	it('should pass valid route parameters to next handler', async () => {
+		const middleware = withRouteParams<{ id: number; slug?: string }>(routeSchema);
 		const next = vi.fn().mockResolvedValue(new Response());
 
 		const event = {
@@ -89,15 +91,12 @@ describe('withRouteParams', () => {
 		await middleware({}, event, next);
 
 		expect(next).toHaveBeenCalledWith({
-			params: { id: '123', slug: 'test-post' }
+			params: { id: 123, slug: 'test-post' }
 		});
 	});
 
-	it('should handle missing parameters', async () => {
-		const middleware = withRouteParams<
-			{ id: string; slug: string },
-			{ params: { id: string; slug: string } }
-		>();
+	it('should handle optional parameters', async () => {
+		const middleware = withRouteParams<{ id: number; slug?: string }>(routeSchema);
 		const next = vi.fn().mockResolvedValue(new Response());
 
 		const event = {
@@ -107,8 +106,46 @@ describe('withRouteParams', () => {
 		await middleware({}, event, next);
 
 		expect(next).toHaveBeenCalledWith({
-			params: { id: '123' }
+			params: { id: 123 }
 		});
+	});
+
+	it('should return 400 for invalid parameters', async () => {
+		const middleware = withRouteParams<{ id: number; slug?: string }>(routeSchema);
+		const next = vi.fn();
+
+		const event = {
+			params: { id: 'not-a-number', slug: 123 }
+		} as any;
+
+		const response = (await middleware({}, event, next)) as any;
+		const data = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(data).toEqual({
+			error: 'Route parameter validation failed',
+			errors: expect.any(Array)
+		});
+		expect(next).not.toHaveBeenCalled();
+	});
+
+	it('should return 400 for missing required parameters', async () => {
+		const middleware = withRouteParams<{ id: number; slug?: string }>(routeSchema);
+		const next = vi.fn();
+
+		const event = {
+			params: { slug: 'test-post' }
+		} as any;
+
+		const response = (await middleware({}, event, next)) as any;
+		const data = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(data).toEqual({
+			error: 'Route parameter validation failed',
+			errors: expect.any(Array)
+		});
+		expect(next).not.toHaveBeenCalled();
 	});
 });
 

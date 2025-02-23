@@ -1,38 +1,64 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { endpoint_GET } from './endpoint';
-import { MockAuthProvider } from '$lib/server/auth/mock';
-import { MockPointsRepo } from '$lib/server/points/mock';
+import type { PointsService } from '$lib/server/points/service';
+import { NotAuthenticatedError, NotOrganizerError } from '$lib/server/points/types';
+import type { PointTransaction } from '$lib/server/points/transaction';
 
 describe('GET /api/v1/points/transactions', () => {
-	it('should return transactions if organizer', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		const pointsRepo = new MockPointsRepo();
-		const mockTransactions = [
-			{
-				id: 1,
-				userId: 1,
-				amount: 100,
-				reason: 'Test',
-				authorId: 1,
-				createdAt: new Date(),
-				status: 'pending'
-			}
-		];
-		pointsRepo.getTransactions.mockResolvedValue(mockTransactions);
+	const mockTransaction: PointTransaction = {
+		id: 1,
+		userId: 1,
+		amount: 100,
+		reason: 'Test',
+		status: 'pending',
+		authorId: 1,
+		createdAt: new Date('2025-02-22T23:33:59.678Z')
+	} as PointTransaction;
 
-		const result = await endpoint_GET({ authProvider, pointsRepo });
+	it('should return transactions when authorized', async () => {
+		const pointsService = {
+			getTransactions: vi.fn().mockResolvedValue([mockTransaction])
+		} as unknown as PointsService;
 
-		expect(result).toEqual(mockTransactions);
-		expect(pointsRepo.getTransactions).toHaveBeenCalled();
+		const result = await endpoint_GET({ pointsService });
+
+		expect(result).toEqual([mockTransaction]);
+		expect(pointsService.getTransactions).toHaveBeenCalled();
 	});
 
-	it('should return unauthorized if not organizer', async () => {
-		const authProvider = new MockAuthProvider().mockSignedIn();
-		const pointsRepo = new MockPointsRepo();
+	it('should return 401 when user is not authenticated', async () => {
+		const pointsService = {
+			getTransactions: vi.fn().mockRejectedValue(new NotAuthenticatedError())
+		} as unknown as PointsService;
 
-		const result = await endpoint_GET({ authProvider, pointsRepo });
+		const result = await endpoint_GET({ pointsService });
 
-		expect(result).toEqual({ success: false, error: 'Unauthorized' });
-		expect(pointsRepo.getTransactions).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			error: 'User is not authenticated',
+			status: 401
+		});
+	});
+
+	it('should return 401 when user is not an organizer', async () => {
+		const pointsService = {
+			getTransactions: vi.fn().mockRejectedValue(new NotOrganizerError())
+		} as unknown as PointsService;
+
+		const result = await endpoint_GET({ pointsService });
+
+		expect(result).toEqual({
+			error: 'User is not an organizer',
+			status: 401
+		});
+	});
+
+	it('should return empty array when no transactions exist', async () => {
+		const pointsService = {
+			getTransactions: vi.fn().mockResolvedValue([])
+		} as unknown as PointsService;
+
+		const result = await endpoint_GET({ pointsService });
+
+		expect(result).toEqual([]);
 	});
 });

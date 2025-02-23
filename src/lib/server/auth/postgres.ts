@@ -1,10 +1,10 @@
 import { db } from '$lib/server/db';
 import { usersTable } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
-import type { IUserRepository, CreateUserData } from './types';
+import type { IUserRepo, CreateUserData } from './types';
 import type { UserData } from '$lib/server/db/types';
 
-export class PostgresUserRepository implements IUserRepository {
+export class PostgresUserRepo implements IUserRepo {
 	async findByAuthId(provider: 'clerk', providerId: string): Promise<UserData | null> {
 		const users = await db
 			.select()

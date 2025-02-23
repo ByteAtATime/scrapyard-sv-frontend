@@ -1,13 +1,22 @@
-import type { IAuthProvider, IAuthState, IUserRepository } from './types';
-import type { UserData } from '$lib/server/db/types';
+import type { UserData } from '../db/types';
+import type { IAuthProvider, IAuthState, IUserRepo } from './types';
+import { NotAuthenticatedError, NotOrganizerError, UserNotFoundError } from './types';
 import { User } from './user';
 import { clerkClient } from 'clerk-sveltekit/server';
 import type { User as ClerkUser } from '@clerk/backend';
+import { db } from '../db';
+import { usersTable, pointTransactionsTable } from '../db/schema';
+import { eq, and, not, sql } from 'drizzle-orm';
+
+export interface IUserService {
+	getUserById(id: number): Promise<UserData>;
+	getAllUsers(includePoints?: boolean): Promise<UserData[]>;
+}
 
 export class AuthService implements IAuthProvider {
 	constructor(
 		private readonly authState: IAuthState,
-		private readonly userRepo: IUserRepository
+		private readonly userRepo: IUserRepo
 	) {}
 
 	isAuthenticated(): boolean {
@@ -71,5 +80,58 @@ export class AuthService implements IAuthProvider {
 			authProvider: 'clerk',
 			authProviderId: clerkUserId
 		});
+	}
+}
+
+export class UserService implements IUserService {
+	constructor(private readonly authProvider: IAuthProvider) {}
+
+	async getUserById(id: number): Promise<UserData> {
+		const user = await db.query.usersTable.findFirst({
+			where: eq(usersTable.id, id)
+		});
+
+		if (!user) {
+			throw new UserNotFoundError(id);
+		}
+
+		return user;
+	}
+
+	async getAllUsers(includePoints = false): Promise<UserData[]> {
+		if (!(await this.authProvider.isOrganizer())) {
+			throw new NotOrganizerError();
+		}
+
+		const authorId = await this.authProvider.getUserId();
+		if (!authorId) {
+			throw new NotAuthenticatedError();
+		}
+
+		const users = await db.query.usersTable.findMany();
+
+		if (includePoints) {
+			// Calculate total points for each user
+			const pointsPromises = users.map(async (user) => {
+				const totalResult = await db
+					.select({ total: sql<number>`COALESCE(SUM(${pointTransactionsTable.amount}), 0)` })
+					.from(pointTransactionsTable)
+					.where(
+						and(
+							eq(pointTransactionsTable.userId, user.id),
+							not(eq(pointTransactionsTable.status, 'rejected')),
+							not(eq(pointTransactionsTable.status, 'deleted'))
+						)
+					);
+				return {
+					...user,
+					totalPoints: totalResult[0]?.total ?? 0
+				};
+			});
+
+			return Promise.all(pointsPromises);
+		}
+
+		return users;
 	}
 }

@@ -1,10 +1,12 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { pointsRepo, PointTransaction } from '$lib/server/points';
+import { PointTransaction, PostgresPointsRepo } from '$lib/server/points';
 import type { PointTransactionData } from '$lib/server/db/types';
 import { ClerkAuthProvider } from '$lib/server/auth';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
+	const pointsRepo = new PostgresPointsRepo();
+
 	const id = parseInt(params.id);
 	if (isNaN(id)) {
 		throw error(400, 'Invalid user ID');

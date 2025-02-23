@@ -2,13 +2,15 @@ import { fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { teamSchema } from './schema';
-import { teamsService, teamsRepo } from '$lib/server/teams';
 import { zod } from 'sveltekit-superforms/adapters';
 import { Team } from '$lib/server/teams/team';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
+import { PostgresTeamsRepo, TeamsService } from '$lib/server/teams';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const authProvider = new ClerkAuthProvider(locals.auth);
+	const teamsRepo = new PostgresTeamsRepo();
+	const teamsService = new TeamsService(teamsRepo);
 
 	try {
 		const teams = await teamsService.getTeams();
@@ -35,6 +37,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const form = await superValidate(request, zod(teamSchema));
 
 		if (!form.valid) {
@@ -54,6 +57,8 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ request }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
+
 		const data = await request.formData();
 		const teamId = Number(data.get('teamId'));
 

@@ -4,6 +4,49 @@ import type { transactionStatusEnum } from '../db/schema';
 
 export type TransactionStatus = (typeof transactionStatusEnum.enumValues)[number];
 
+// Domain Errors
+export class PointsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PointsError';
+	}
+}
+
+export class NotAuthenticatedError extends PointsError {
+	constructor() {
+		super('User is not authenticated');
+		this.name = 'NotAuthenticatedError';
+	}
+}
+
+export class NotOrganizerError extends PointsError {
+	constructor() {
+		super('User is not an organizer');
+		this.name = 'NotOrganizerError';
+	}
+}
+
+export class UserNotFoundError extends PointsError {
+	constructor(userId: number) {
+		super(`User with ID ${userId} not found`);
+		this.name = 'UserNotFoundError';
+	}
+}
+
+export class TransactionNotFoundError extends PointsError {
+	constructor(transactionId: number) {
+		super(`Transaction with ID ${transactionId} not found`);
+		this.name = 'TransactionNotFoundError';
+	}
+}
+
+export class SelfReviewError extends PointsError {
+	constructor(userId: number) {
+		super(`User ${userId} cannot review their own transaction`);
+		this.name = 'SelfReviewError';
+	}
+}
+
 export interface CreateTransactionData {
 	userId: number;
 	amount: number;
@@ -76,4 +119,5 @@ export interface IPointsService {
 	): Promise<PointTransactionData>;
 	getPendingTransactions(): Promise<PointTransactionData[]>;
 	getTransactionById(id: number): Promise<PointTransactionData | null>;
+	awardPoints(userId: number, amount: number, reason: string): Promise<void>;
 }

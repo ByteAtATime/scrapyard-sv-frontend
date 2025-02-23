@@ -1,8 +1,11 @@
-import type { IAuthProvider } from '$lib/server/auth/types';
 import { insertPointTransactionSchema } from '$lib/server/db/types';
 import type { EndpointHandler } from '$lib/server/endpoints';
-import { PointTransaction } from '$lib/server/points/transaction';
-import type { IPointsRepo } from '$lib/server/points/types';
+import type { PointsService } from '$lib/server/points/service';
+import {
+	NotAuthenticatedError,
+	NotOrganizerError,
+	UserNotFoundError
+} from '$lib/server/points/types';
 import { z } from 'zod';
 
 export const postSchema = z.object({
@@ -12,55 +15,34 @@ export const postSchema = z.object({
 });
 
 export const endpoint_POST: EndpointHandler<{
-	pointsRepo: IPointsRepo;
-	authProvider: IAuthProvider;
+	pointsService: PointsService;
 	body: z.infer<typeof postSchema>;
-}> = async ({ pointsRepo, authProvider, body }) => {
+}> = async ({ pointsService, body }) => {
 	const { userId, amount, reason } = body;
 
-	if (!(await authProvider.isOrganizer())) {
+	try {
+		await pointsService.awardPoints(userId, amount, reason);
+		return { success: true };
+	} catch (error) {
+		// Map domain errors to HTTP responses
+		if (error instanceof NotAuthenticatedError || error instanceof NotOrganizerError) {
+			return {
+				error: error.message,
+				status: 401
+			};
+		}
+		if (error instanceof UserNotFoundError) {
+			return {
+				error: error.message,
+				status: 404
+			};
+		}
+
+		// Unexpected errors
+		console.error('Unexpected error:', error);
 		return {
-			success: false,
-			error: 'Unauthorized'
+			error: 'Internal server error',
+			status: 500
 		};
 	}
-
-	const authorId = await authProvider.getUserId();
-
-	if (!authorId) {
-		return {
-			success: false,
-			error: 'Unauthorized'
-		};
-	}
-
-	const user = await authProvider.getUserById(userId);
-
-	if (!user) {
-		return {
-			success: false,
-			error: 'User not found'
-		};
-	}
-
-	const transaction = new PointTransaction(
-		{
-			userId,
-			amount,
-			reason,
-			authorId,
-
-			// ignored
-			id: 0,
-			createdAt: new Date(),
-			status: 'pending',
-			reviewerId: null,
-			reviewedAt: null,
-			rejectionReason: null
-		},
-		authProvider
-	);
-	await pointsRepo.awardPoints(transaction);
-
-	return { success: true };
 };

@@ -15,7 +15,7 @@ import { ordersTable, shopItemsTable, pointTransactionsTable } from '../db/schem
 // TODO: is there a better way to do this?
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export class PostgresShopRepository implements IShopRepo {
+export class PostgresShopRepo implements IShopRepo {
 	async getAllItems(): Promise<ShopItem[]> {
 		const items = await db.select().from(shopItemsTable).orderBy(shopItemsTable.id);
 		return items.map((item) => new ShopItem(item));
@@ -89,7 +89,7 @@ export class PostgresShopRepository implements IShopRepo {
 			}
 
 			if (item.stock <= 0) {
-				throw new InsufficientStockError(item.name);
+				throw new InsufficientStockError(itemId);
 			}
 
 			const order = await this.createOrder(

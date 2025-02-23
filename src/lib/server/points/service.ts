@@ -2,7 +2,15 @@ import type {
 	IPointsService,
 	IPointsRepo,
 	CreateTransactionData,
-	ReviewTransactionData
+	ReviewTransactionData,
+	LeaderboardEntry
+} from './types';
+import {
+	NotAuthenticatedError,
+	NotOrganizerError,
+	UserNotFoundError,
+	TransactionNotFoundError,
+	SelfReviewError
 } from './types';
 import type { PointTransactionData } from '../db/types';
 import { PointTransaction } from './transaction';
@@ -41,12 +49,12 @@ export class PointsService implements IPointsService {
 
 		// If transaction doesn't exist, throw an error
 		if (!transaction) {
-			throw new Error('Transaction not found');
+			throw new TransactionNotFoundError(transactionId);
 		}
 
 		// Check if the reviewer is trying to approve their own transaction
 		if (transaction.userId === data.reviewerId) {
-			throw new Error('Cannot approve your own transaction');
+			throw new SelfReviewError(data.reviewerId);
 		}
 
 		return await this.repository.reviewTransaction(transactionId, data);
@@ -58,5 +66,55 @@ export class PointsService implements IPointsService {
 
 	async getTransactionById(id: number): Promise<PointTransactionData | null> {
 		return await this.repository.getTransactionById(id);
+	}
+
+	async awardPoints(userId: number, amount: number, reason: string): Promise<void> {
+		// Authorization check
+		if (!(await this.authProvider.isOrganizer())) {
+			throw new NotOrganizerError();
+		}
+
+		const authorId = await this.authProvider.getUserId();
+		if (!authorId) {
+			throw new NotAuthenticatedError();
+		}
+
+		// User existence check
+		const user = await this.authProvider.getUserById(userId);
+		if (!user) {
+			throw new UserNotFoundError(userId);
+		}
+
+		// Create and save transaction
+		const transaction = new PointTransaction(
+			{
+				userId,
+				amount,
+				reason,
+				authorId,
+				id: 0,
+				createdAt: new Date(),
+				status: 'pending',
+				reviewerId: null,
+				reviewedAt: null,
+				rejectionReason: null
+			},
+			this.authProvider
+		);
+
+		await this.repository.awardPoints(transaction);
+	}
+
+	async getLeaderboard(): Promise<LeaderboardEntry[]> {
+		if (!(await this.authProvider.isOrganizer())) {
+			throw new NotOrganizerError();
+		}
+
+		const authorId = await this.authProvider.getUserId();
+		if (!authorId) {
+			throw new NotAuthenticatedError();
+		}
+
+		return await this.repository.getLeaderboard();
 	}
 }

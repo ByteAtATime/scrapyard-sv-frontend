@@ -108,7 +108,7 @@ describe('PointsService', () => {
 					reviewerId: 2,
 					status: 'approved'
 				})
-			).rejects.toThrow('Transaction not found');
+			).rejects.toThrow('Transaction with ID 1 not found');
 		});
 
 		it('should throw error when reviewer tries to approve their own transaction', async () => {
@@ -120,7 +120,7 @@ describe('PointsService', () => {
 					reviewerId: 1,
 					status: 'approved'
 				})
-			).rejects.toThrow('Cannot approve your own transaction');
+			).rejects.toThrow('User 1 cannot review their own transaction');
 		});
 	});
 

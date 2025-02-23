@@ -1,17 +1,52 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ShopService } from './service';
 import { MockShopRepo } from './mock';
-import { ItemNotFoundError, OrderNotFoundError } from './types';
+import {
+	ItemNotFoundError,
+	OrderNotFoundError,
+	NotAuthenticatedError,
+	ItemNotOrderableError,
+	InsufficientStockError,
+	InsufficientBalanceError
+} from './types';
 import { ShopItem } from './shop-item';
 import { Order } from './order';
+import type { IAuthProvider } from '$lib/server/auth/types';
+import type { IPointsRepo } from '$lib/server/points';
+import type { UserData } from '$lib/server/db/types';
+import { User } from '$lib/server/auth/user';
 
 describe('ShopService', () => {
 	let mockRepo: MockShopRepo;
+	let mockAuthProvider: IAuthProvider;
+	let mockPointsRepo: IPointsRepo;
 	let service: ShopService;
 
 	beforeEach(() => {
 		mockRepo = new MockShopRepo();
-		service = new ShopService(mockRepo);
+		mockAuthProvider = {
+			isAuthenticated: vi.fn().mockReturnValue(true),
+			getUserId: vi.fn().mockResolvedValue(1),
+			isOrganizer: vi.fn().mockResolvedValue(true),
+			getCurrentUser: vi.fn().mockResolvedValue(
+				new User({
+					id: 1,
+					name: 'Test User',
+					email: 'test@example.com',
+					isOrganizer: true,
+					authProvider: 'clerk',
+					authProviderId: 'test_id'
+				})
+			),
+			getUserById: vi.fn().mockResolvedValue(null)
+		} as unknown as IAuthProvider;
+		mockPointsRepo = {
+			getTotalPoints: vi.fn().mockResolvedValue(1000),
+			getTransactions: vi.fn(),
+			createTransaction: vi.fn(),
+			getTransactionById: vi.fn()
+		} as unknown as IPointsRepo;
+		service = new ShopService(mockRepo, mockAuthProvider, mockPointsRepo);
 	});
 
 	describe('getAllItems', () => {
@@ -154,20 +189,109 @@ describe('ShopService', () => {
 	});
 
 	describe('purchaseItem', () => {
-		it('should delegate purchase to repository', async () => {
-			const mockOrder = new Order({
-				id: 1,
-				userId: 1,
-				shopItemId: 1,
-				status: 'pending',
-				createdAt: new Date()
-			});
+		const mockUserData: UserData = {
+			id: 1,
+			name: 'Test User',
+			email: 'test@example.com',
+			authProvider: 'clerk',
+			authProviderId: 'test-id',
+			isOrganizer: true
+		};
+		const mockUser = new User(mockUserData);
 
+		const mockItem = new ShopItem({
+			id: 1,
+			name: 'Item 1',
+			description: 'Description 1',
+			imageUrl: 'image1.jpg',
+			price: 100,
+			stock: 10,
+			isOrderable: true,
+			createdAt: new Date(),
+			updatedAt: new Date()
+		});
+
+		const mockOrder = new Order({
+			id: 1,
+			userId: 1,
+			shopItemId: 1,
+			status: 'pending',
+			createdAt: new Date()
+		});
+
+		it('should successfully purchase item when all conditions are met', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(mockUser);
+			mockRepo.getItemById.mockResolvedValue(mockItem);
+			vi.mocked(mockPointsRepo.getTotalPoints).mockResolvedValue(200);
 			mockRepo.purchaseItem.mockResolvedValue(mockOrder);
 
-			const result = await service.purchaseItem(1, 1);
+			const result = await service.purchaseItem(1);
 			expect(result).toEqual(mockOrder);
 			expect(mockRepo.purchaseItem).toHaveBeenCalledWith(1, 1);
+		});
+
+		it('should throw NotAuthenticatedError when user is not authenticated', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(null);
+
+			await expect(service.purchaseItem(1)).rejects.toThrow(NotAuthenticatedError);
+			expect(mockRepo.purchaseItem).not.toHaveBeenCalled();
+		});
+
+		it('should throw ItemNotFoundError when item does not exist', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(mockUser);
+			mockRepo.getItemById.mockResolvedValue(null);
+
+			await expect(service.purchaseItem(1)).rejects.toThrow(ItemNotFoundError);
+			expect(mockRepo.purchaseItem).not.toHaveBeenCalled();
+		});
+
+		it('should throw ItemNotOrderableError when item is not orderable', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(mockUser);
+			mockRepo.getItemById.mockResolvedValue(
+				new ShopItem({
+					id: mockItem.id,
+					name: mockItem.name,
+					description: mockItem.description,
+					imageUrl: mockItem.imageUrl,
+					price: mockItem.price,
+					stock: mockItem.stock,
+					isOrderable: false,
+					createdAt: mockItem.createdAt,
+					updatedAt: mockItem.updatedAt
+				})
+			);
+
+			await expect(service.purchaseItem(1)).rejects.toThrow(ItemNotOrderableError);
+			expect(mockRepo.purchaseItem).not.toHaveBeenCalled();
+		});
+
+		it('should throw InsufficientStockError when item is out of stock', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(mockUser);
+			mockRepo.getItemById.mockResolvedValue(
+				new ShopItem({
+					id: mockItem.id,
+					name: mockItem.name,
+					description: mockItem.description,
+					imageUrl: mockItem.imageUrl,
+					price: mockItem.price,
+					stock: 0,
+					isOrderable: true,
+					createdAt: mockItem.createdAt,
+					updatedAt: mockItem.updatedAt
+				})
+			);
+
+			await expect(service.purchaseItem(1)).rejects.toThrow(InsufficientStockError);
+			expect(mockRepo.purchaseItem).not.toHaveBeenCalled();
+		});
+
+		it('should throw InsufficientBalanceError when user has insufficient balance', async () => {
+			vi.mocked(mockAuthProvider.getCurrentUser).mockResolvedValue(mockUser);
+			mockRepo.getItemById.mockResolvedValue(mockItem);
+			vi.mocked(mockPointsRepo.getTotalPoints).mockResolvedValue(50);
+
+			await expect(service.purchaseItem(1)).rejects.toThrow(InsufficientBalanceError);
+			expect(mockRepo.purchaseItem).not.toHaveBeenCalled();
 		});
 	});
 

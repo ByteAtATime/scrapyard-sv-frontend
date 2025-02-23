@@ -3,16 +3,18 @@ import type { PageServerLoad, Actions } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { teamSchema } from '../../organizer/teams/schema';
 import { inviteSchema, invitationActionSchema } from './schema';
-import { teamsService, teamsRepo } from '$lib/server/teams';
 import { zod } from 'sveltekit-superforms/adapters';
 import { TEAM_CONFIG } from '$lib/server/teams/config';
 import { ClerkAuthProvider } from '$lib/server/auth/clerk';
 import { Team } from '$lib/server/teams/team';
 import { TeamInvitation } from '$lib/server/teams/invitation';
 import type { TeamInvitationJson } from '$lib/server/teams/invitation';
+import { TeamsService, PostgresTeamsRepo } from '$lib/server/teams';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const authProvider = new ClerkAuthProvider(locals.auth);
+	const teamsRepo = new PostgresTeamsRepo();
+	const teamsService = new TeamsService(teamsRepo);
 	const userId = await authProvider.getUserId();
 
 	if (!userId) {
@@ -87,6 +89,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const authProvider = new ClerkAuthProvider(locals.auth);
 		const userId = await authProvider.getUserId();
 
@@ -124,6 +127,7 @@ export const actions: Actions = {
 	},
 
 	invite: async ({ request, locals }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const authProvider = new ClerkAuthProvider(locals.auth);
 		const userId = await authProvider.getUserId();
 
@@ -180,6 +184,7 @@ export const actions: Actions = {
 	},
 
 	cancelInvitation: async ({ request, locals }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const authProvider = new ClerkAuthProvider(locals.auth);
 		const userId = await authProvider.getUserId();
 
@@ -206,6 +211,7 @@ export const actions: Actions = {
 	},
 
 	acceptInvitation: async ({ request, locals }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const authProvider = new ClerkAuthProvider(locals.auth);
 		const userId = await authProvider.getUserId();
 
@@ -232,6 +238,7 @@ export const actions: Actions = {
 	},
 
 	rejectInvitation: async ({ request, locals }) => {
+		const teamsService = new TeamsService(new PostgresTeamsRepo());
 		const authProvider = new ClerkAuthProvider(locals.auth);
 		const userId = await authProvider.getUserId();
 

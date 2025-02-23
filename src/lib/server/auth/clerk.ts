@@ -2,14 +2,14 @@ import type { AuthObject } from '@clerk/backend';
 import type { IAuthProvider } from './types';
 import { ClerkAuthState } from './clerk-state';
 import { AuthService } from './service';
-import { PostgresUserRepository } from './postgres';
+import { PostgresUserRepo } from './postgres';
 
 export class ClerkAuthProvider implements IAuthProvider {
 	private service: AuthService;
 
 	constructor(auth: AuthObject) {
 		const state = new ClerkAuthState(auth);
-		const repo = new PostgresUserRepository();
+		const repo = new PostgresUserRepo();
 		this.service = new AuthService(state, repo);
 	}
 

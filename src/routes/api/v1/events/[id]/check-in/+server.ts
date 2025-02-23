@@ -1,12 +1,10 @@
 import { compose, withBodySchema, withRouteParams } from '$lib/server/endpoints';
-import { withAuthProvider } from '$lib/server/endpoints/dependencies';
-import { endpoint_POST, postSchema } from './endpoint';
+import { withEventsService } from '$lib/server/endpoints/dependencies';
+import { endpoint_POST, postSchema, routeSchema } from './endpoint';
 import type { RequestHandler } from './$types';
-import { withEventsRepo } from '$lib/server/endpoints/dependencies';
 
 export const POST: RequestHandler = compose(
-	withAuthProvider(),
+	withEventsService(),
 	withBodySchema(postSchema),
-	withRouteParams(),
-	withEventsRepo()
+	withRouteParams(routeSchema)
 )(endpoint_POST);

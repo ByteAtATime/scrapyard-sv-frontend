@@ -1,140 +1,162 @@
 import { describe, it, expect, vi } from 'vitest';
 import { endpoint_POST } from './endpoint';
-import type { IPointsRepo } from '$lib/server/points/types';
-import type { IAuthProvider } from '$lib/server/auth/types';
-import { MockAuthProvider } from '$lib/server/auth/mock';
-import { MockPointsRepo } from '$lib/server/points/mock';
+import type { PointsService } from '$lib/server/points/service';
+import type { PointTransactionData } from '$lib/server/db/types';
+import {
+	NotAuthenticatedError,
+	NotOrganizerError,
+	TransactionNotFoundError,
+	SelfReviewError
+} from '$lib/server/points/types';
 
 describe('POST /api/v1/points/transactions/review', () => {
-	it('should return success if organizer reviews transaction', async () => {
-		const pointsRepo: IPointsRepo = {
-			reviewTransaction: vi.fn().mockResolvedValue({ id: 1 })
-		} as unknown as IPointsRepo;
+	const mockTransaction: PointTransactionData = {
+		id: 1,
+		userId: 2,
+		amount: 100,
+		reason: 'Test reason',
+		authorId: 3,
+		createdAt: new Date(),
+		status: 'approved',
+		reviewerId: 4,
+		reviewedAt: new Date(),
+		rejectionReason: null
+	};
 
-		const authProvider: IAuthProvider = {
-			isOrganizer: vi.fn().mockResolvedValue(true),
-			getUserId: vi.fn().mockResolvedValue(1)
-		} as unknown as IAuthProvider;
+	it('should successfully review transaction', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockResolvedValue(mockTransaction)
+		} as unknown as PointsService;
 
-		const result = await endpoint_POST({
-			pointsRepo,
-			authProvider,
-			body: {
-				transactionId: 1,
-				status: 'approved'
-			}
-		});
+		const body = {
+			transactionId: 1,
+			status: 'approved' as const
+		};
 
-		expect(result).toEqual({ id: 1 });
-		expect(pointsRepo.reviewTransaction).toHaveBeenCalledWith(1, {
-			reviewerId: 1,
-			status: 'approved'
-		});
-	});
+		const result = await endpoint_POST({ pointsService, body });
 
-	it('should return success if organizer rejects transaction with reason', async () => {
-		const pointsRepo: IPointsRepo = {
-			reviewTransaction: vi.fn().mockResolvedValue({ id: 1 })
-		} as unknown as IPointsRepo;
-
-		const authProvider: IAuthProvider = {
-			isOrganizer: vi.fn().mockResolvedValue(true),
-			getUserId: vi.fn().mockResolvedValue(1)
-		} as unknown as IAuthProvider;
-
-		const result = await endpoint_POST({
-			pointsRepo,
-			authProvider,
-			body: {
-				transactionId: 1,
-				status: 'rejected',
-				rejectionReason: 'Bad reason'
-			}
-		});
-
-		expect(result).toEqual({ id: 1 });
-		expect(pointsRepo.reviewTransaction).toHaveBeenCalledWith(1, {
-			reviewerId: 1,
-			status: 'rejected',
-			rejectionReason: 'Bad reason'
+		expect(result).toEqual({ success: true, transaction: mockTransaction });
+		expect(pointsService.reviewTransaction).toHaveBeenCalledWith(1, {
+			status: 'approved',
+			rejectionReason: undefined,
+			reviewerId: 0
 		});
 	});
 
-	it('should return success if organizer deletes transaction', async () => {
-		const pointsRepo: IPointsRepo = {
-			reviewTransaction: vi.fn().mockResolvedValue({ id: 1 })
-		} as unknown as IPointsRepo;
+	it('should return 401 when user is not authenticated', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockRejectedValue(new NotAuthenticatedError())
+		} as unknown as PointsService;
 
-		const authProvider: IAuthProvider = {
-			isOrganizer: vi.fn().mockResolvedValue(true),
-			getUserId: vi.fn().mockResolvedValue(1)
-		} as unknown as IAuthProvider;
+		const body = {
+			transactionId: 1,
+			status: 'approved' as const
+		};
 
-		const result = await endpoint_POST({
-			pointsRepo,
-			authProvider,
-			body: {
-				transactionId: 1,
-				status: 'deleted'
-			}
-		});
-
-		expect(result).toEqual({ id: 1 });
-		expect(pointsRepo.reviewTransaction).toHaveBeenCalledWith(1, {
-			reviewerId: 1,
-			status: 'deleted'
-		});
-	});
-
-	it('should return error if not organizer', async () => {
-		const pointsRepo: IPointsRepo = {
-			reviewTransaction: vi.fn()
-		} as unknown as IPointsRepo;
-
-		const authProvider: IAuthProvider = {
-			isOrganizer: vi.fn().mockResolvedValue(false),
-			getUserId: vi.fn().mockResolvedValue(1)
-		} as unknown as IAuthProvider;
-
-		const result = await endpoint_POST({
-			pointsRepo,
-			authProvider,
-			body: {
-				transactionId: 1,
-				status: 'approved'
-			}
-		});
+		const result = await endpoint_POST({ pointsService, body });
 
 		expect(result).toEqual({
-			success: false,
-			error: 'Unauthorized'
+			error: 'User is not authenticated',
+			status: 401
 		});
-		expect(pointsRepo.reviewTransaction).not.toHaveBeenCalled();
 	});
 
-	it('should return unauthorized if no reviewer ID', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		authProvider.getUserId.mockResolvedValue(null);
-		const pointsRepo = new MockPointsRepo();
-		const body = { transactionId: 1, status: 'approved' } as const;
+	it('should return 401 when user is not an organizer', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockRejectedValue(new NotOrganizerError())
+		} as unknown as PointsService;
 
-		const result = await endpoint_POST({ authProvider, pointsRepo, body });
+		const body = {
+			transactionId: 1,
+			status: 'approved' as const
+		};
 
-		expect(result).toEqual({ success: false, error: 'Unauthorized' });
-		expect(pointsRepo.reviewTransaction).not.toHaveBeenCalled();
+		const result = await endpoint_POST({ pointsService, body });
+
+		expect(result).toEqual({
+			error: 'User is not an organizer',
+			status: 401
+		});
 	});
 
-	it('should return error if reviewTransaction fails', async () => {
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		const pointsRepo = new MockPointsRepo();
-		const body = { transactionId: 1, status: 'approved' } as const;
-		pointsRepo.reviewTransaction.mockResolvedValue({
-			success: false,
-			error: 'Transaction failed'
+	it('should return 404 when transaction is not found', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockRejectedValue(new TransactionNotFoundError(999))
+		} as unknown as PointsService;
+
+		const body = {
+			transactionId: 999,
+			status: 'approved' as const
+		};
+
+		const result = await endpoint_POST({ pointsService, body });
+
+		expect(result).toEqual({
+			error: 'Transaction with ID 999 not found',
+			status: 404
 		});
+	});
 
-		const result = await endpoint_POST({ authProvider, pointsRepo, body });
+	it('should return 400 when reviewer tries to review their own transaction', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockRejectedValue(new SelfReviewError(1))
+		} as unknown as PointsService;
 
-		expect(result).toEqual({ success: false, error: 'Transaction failed' });
+		const body = {
+			transactionId: 1,
+			status: 'approved' as const
+		};
+
+		const result = await endpoint_POST({ pointsService, body });
+
+		expect(result).toEqual({
+			error: 'User 1 cannot review their own transaction',
+			status: 400
+		});
+	});
+
+	it('should return 500 when unexpected error occurs', async () => {
+		const pointsService = {
+			reviewTransaction: vi.fn().mockRejectedValue(new Error('Database error'))
+		} as unknown as PointsService;
+
+		const body = {
+			transactionId: 1,
+			status: 'approved' as const
+		};
+
+		const result = await endpoint_POST({ pointsService, body });
+
+		expect(result).toEqual({
+			error: 'Internal server error',
+			status: 500
+		});
+	});
+
+	it('should handle rejection reason', async () => {
+		const mockRejectedTransaction = {
+			...mockTransaction,
+			status: 'rejected',
+			rejectionReason: 'Invalid transaction'
+		};
+
+		const pointsService = {
+			reviewTransaction: vi.fn().mockResolvedValue(mockRejectedTransaction)
+		} as unknown as PointsService;
+
+		const body = {
+			transactionId: 1,
+			status: 'rejected' as const,
+			rejectionReason: 'Invalid transaction'
+		};
+
+		const result = await endpoint_POST({ pointsService, body });
+
+		expect(result).toEqual({ success: true, transaction: mockRejectedTransaction });
+		expect(pointsService.reviewTransaction).toHaveBeenCalledWith(1, {
+			status: 'rejected',
+			rejectionReason: 'Invalid transaction',
+			reviewerId: 0
+		});
 	});
 });
