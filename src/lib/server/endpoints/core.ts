@@ -1,10 +1,14 @@
-import type { RequestEvent, RequestHandler } from '@sveltejs/kit';
-import type { EndpointHandler, MiddlewareHandler, ApiError } from './types';
+import type { RequestEvent, RequestHandler, ServerLoad, ServerLoadEvent } from '@sveltejs/kit';
+import type { EndpointHandler, MiddlewareHandler, ApiError, PageHandler } from './types';
 import { isApiError, isApiResponse } from './types';
 import { json } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 
 type ComposedHandler<TDeps> = (deps: TDeps, event: RequestEvent) => Response | Promise<Response>;
+type ComposedPageHandler<TDeps, TReturn> = (
+	deps: TDeps,
+	event: ServerLoadEvent
+) => TReturn | Promise<TReturn>;
 
 export function successResponse<T>(data: T, status = 200): Response {
 	return json({ success: true, data }, { status });
@@ -68,6 +72,29 @@ export const compose = (...middlewares: MiddlewareHandler<any>[]) => {
 					status: 500,
 					code: 'INTERNAL_ERROR'
 				});
+			}
+		};
+	};
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const composePage = (...middlewares: MiddlewareHandler<any>[]) => {
+	return <TDeps, TReturn>(handler: PageHandler<TDeps>): ServerLoad => {
+		const composedMiddleware = middlewares.reduceRight<ComposedPageHandler<TDeps, TReturn>>(
+			(next, middleware) => {
+				return async (deps, event) =>
+					(await middleware(deps, event, (newDeps) => next(newDeps, event))) as unknown as TReturn;
+			},
+			async (deps, _event) => (await handler(deps)) as unknown as TReturn
+		);
+
+		return async (event) => {
+			try {
+				const response = await composedMiddleware({} as TDeps, event);
+				return response;
+			} catch (e) {
+				console.error(e);
+				return {};
 			}
 		};
 	};

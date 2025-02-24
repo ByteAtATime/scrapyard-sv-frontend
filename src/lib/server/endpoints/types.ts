@@ -38,6 +38,7 @@ export type MiddlewareHandler<TDeps> = (
 ) => ApiEndpointResult;
 
 export type EndpointHandler<TDeps, T = unknown> = (deps: TDeps) => ApiEndpointResult<T>;
+export type PageHandler<TDeps, T = unknown> = (deps: TDeps) => T | Promise<T>;
 
 export type Handler<TDeps> = MiddlewareHandler<TDeps> | EndpointHandler<TDeps>;
 

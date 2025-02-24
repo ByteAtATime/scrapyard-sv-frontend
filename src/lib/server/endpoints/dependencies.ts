@@ -64,6 +64,8 @@ export const withDependencies = <T extends Record<string, unknown>>(
 	};
 };
 
+export type EventsServiceDep = { eventsService: EventsService };
+
 export const withEventsService = () => {
 	return withDependencies<{ eventsService: EventsService }>(async ({ authProvider }) => {
 		return {
