@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { compose } from './core';
-import type { RequestEvent } from '@sveltejs/kit';
-import type { EndpointHandler, MiddlewareHandler } from './types';
+import { compose, composePage } from './core';
+import type { RequestEvent, ServerLoadEvent } from '@sveltejs/kit';
+import type { EndpointHandler, MiddlewareHandler, PageHandler } from './types';
 
 interface TestDeps {
 	a?: number;
@@ -107,5 +107,101 @@ describe('compose', () => {
 			success: false,
 			error: 'Internal server error'
 		});
+	});
+});
+
+describe('composePage', () => {
+	it('should return data from the handler when no middleware is used', async () => {
+		const handler: PageHandler<unknown> = () => ({ data: 'test' });
+		const composed = composePage()(handler);
+		const event = {} as ServerLoadEvent;
+		const result = await composed(event);
+		expect(result).toEqual({ data: 'test' });
+	});
+
+	it('should compose middleware that modify dependencies', async () => {
+		interface Deps {
+			a: number;
+			b: number;
+		}
+		const middleware1: MiddlewareHandler<Deps> = (deps, _event, next) => {
+			return next({ ...deps, a: 1 });
+		};
+		const middleware2: MiddlewareHandler<Deps> = (deps, _event, next) => {
+			return next({ ...deps, b: 2 });
+		};
+		const handler: PageHandler<Deps> = (deps) => ({ sum: deps.a + deps.b });
+		const composed = composePage(middleware1, middleware2)(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({ sum: 3 });
+	});
+
+	it('should allow middleware to return data directly without calling next', async () => {
+		const middleware: MiddlewareHandler<unknown> = () => ({ data: 'from middleware' });
+		const handler: PageHandler<unknown> = () => ({ data: 'from handler' });
+		const composed = composePage(middleware)(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({ data: 'from middleware' });
+	});
+
+	it('should return empty object if the handler throws an error', async () => {
+		const handler: PageHandler<unknown> = () => {
+			throw new Error('test error');
+		};
+		const composed = composePage()(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({});
+	});
+
+	it('should return empty object if middleware throws an error', async () => {
+		const middleware: MiddlewareHandler<unknown> = () => {
+			throw new Error('middleware error');
+		};
+		const handler: PageHandler<unknown> = vi.fn();
+		const composed = composePage(middleware)(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({});
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('should return data directly from middleware without invoking subsequent middlewares or handler', async () => {
+		const middleware1: MiddlewareHandler<unknown> = () => ({ data: 'middleware1' });
+		const middleware2: MiddlewareHandler<unknown> = vi.fn((_deps, _event, next) => next({}));
+		const handler: PageHandler<unknown> = vi.fn();
+		const composed = composePage(middleware1, middleware2)(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({ data: 'middleware1' });
+		expect(middleware2).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('should handle ApiError objects returned by middleware', async () => {
+		const middleware: MiddlewareHandler<unknown> = () => ({
+			error: 'Validation failed',
+			status: 400,
+			code: 'VALIDATION_ERROR'
+		});
+		const composed = composePage(middleware)(() => ({}));
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({
+			error: 'Validation failed',
+			status: 400,
+			code: 'VALIDATION_ERROR'
+		});
+	});
+
+	it('should pass modified dependencies through multiple middlewares', async () => {
+		const middleware1: MiddlewareHandler<{ a: number }> = (deps, _event, next) => {
+			return next({ ...deps, a: 10 });
+		};
+		const middleware2: MiddlewareHandler<{ a: number; b: string }> = (deps, _event, next) => {
+			return next({ ...deps, b: 'test' });
+		};
+		const handler: PageHandler<{ a: number; b: string }> = (deps) => ({
+			combined: `${deps.a} ${deps.b}`
+		});
+		const composed = composePage(middleware1, middleware2)(handler);
+		const result = await composed({} as ServerLoadEvent);
+		expect(result).toEqual({ combined: '10 test' });
 	});
 });
