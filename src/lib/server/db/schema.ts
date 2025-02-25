@@ -132,3 +132,10 @@ export const teamInvitationsTable = pgTable('team_invitations', {
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 	responseAt: timestamp('response_at')
 });
+
+export const shortenedUrlsTable = pgTable('shortened_urls', {
+	id: serial('id').primaryKey(),
+	originalUrl: text('original_url').notNull(),
+	slug: text('slug').notNull().unique(),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
