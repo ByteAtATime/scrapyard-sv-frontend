@@ -85,17 +85,7 @@ export class ScrapperService implements IScrapperService {
 		if (session.status !== 'active' && session.status !== 'paused')
 			throw new Error('Session must be active or paused to complete');
 
-		let totalPausedSeconds = session.totalPausedSeconds || 0;
-		if (session.status === 'paused' && session.lastPausedAt) {
-			const pausedSeconds = Math.floor((Date.now() - session.lastPausedAt.getTime()) / 1000);
-			totalPausedSeconds += pausedSeconds;
-		}
-
-		const dbSession = await this.repo.updateSession(session.id, {
-			status: 'completed',
-			endTime: new Date(),
-			totalPausedTime: (totalPausedSeconds / 60).toString()
-		});
+		const dbSession = await this.repo.completeSession(session.id);
 
 		return Session.fromDB(dbSession, this.authProvider).toJson();
 	}
