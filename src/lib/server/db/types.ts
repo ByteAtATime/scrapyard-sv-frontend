@@ -6,7 +6,9 @@ import {
 	pointTransactionsTable,
 	usersTable,
 	teamsTable,
-	teamMembersTable
+	teamMembersTable,
+	scrapsTable,
+	scrapperSessionsTable
 } from './schema';
 import type { z } from 'zod';
 
@@ -50,3 +52,13 @@ export type TeamMemberData = z.infer<typeof selectTeamMemberSchema>;
 export interface TeamWithMembersData extends TeamData {
 	members: (TeamMemberData & { user: UserData })[];
 }
+
+export const selectScrapSchema = createSelectSchema(scrapsTable);
+export const insertScrapSchema = createInsertSchema(scrapsTable);
+export type ScrapData = z.infer<typeof selectScrapSchema>;
+
+export const selectSessionSchema = createSelectSchema(scrapperSessionsTable);
+export const insertSessionSchema = createInsertSchema(scrapperSessionsTable);
+export type SessionData = z.infer<typeof selectSessionSchema> & {
+	totalPausedSeconds?: number;
+};

@@ -1,4 +1,10 @@
-import type { RequestEvent, RequestHandler, ServerLoad, ServerLoadEvent } from '@sveltejs/kit';
+import type {
+	Action,
+	RequestEvent,
+	RequestHandler,
+	ServerLoad,
+	ServerLoadEvent
+} from '@sveltejs/kit';
 import type { EndpointHandler, MiddlewareHandler, ApiError, PageHandler } from './types';
 import { isApiError, isApiResponse } from './types';
 import { json } from '@sveltejs/kit';
@@ -7,7 +13,7 @@ import { dev } from '$app/environment';
 type ComposedHandler<TDeps> = (deps: TDeps, event: RequestEvent) => Response | Promise<Response>;
 type ComposedPageHandler<TDeps, TReturn> = (
 	deps: TDeps,
-	event: ServerLoadEvent
+	event: ServerLoadEvent | RequestEvent
 ) => TReturn | Promise<TReturn>;
 
 export function successResponse<T>(data: T, status = 200): Response {
@@ -79,7 +85,7 @@ export const compose = (...middlewares: MiddlewareHandler<any>[]) => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const composePage = (...middlewares: MiddlewareHandler<any>[]) => {
-	return <TDeps, TReturn>(handler: PageHandler<TDeps>): ServerLoad => {
+	return <TDeps, TReturn>(handler: PageHandler<TDeps>): ServerLoad & Action => {
 		const composedMiddleware = middlewares.reduceRight<ComposedPageHandler<TDeps, TReturn>>(
 			(next, middleware) => {
 				return async (deps, event) =>

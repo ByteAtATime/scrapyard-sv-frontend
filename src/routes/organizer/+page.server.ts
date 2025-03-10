@@ -2,9 +2,9 @@ import { PostgresPointsRepo } from '$lib/server/points';
 import { PostgresEventsRepo } from '$lib/server/events/postgres';
 import type { PageHandler } from '$lib/server/endpoints/types';
 import { composePage } from '$lib/server/endpoints';
-import { withEventsService, type EventsServiceDep } from '$lib/server/endpoints/dependencies';
+import { withEventsService, type WithEventsService } from '$lib/server/endpoints/dependencies';
 
-const loadHandler: PageHandler<EventsServiceDep> = async ({ eventsService: _ }) => {
+const loadHandler: PageHandler<WithEventsService> = async ({ eventsService: _ }) => {
 	const pointsRepo = new PostgresPointsRepo();
 	const eventsRepo = new PostgresEventsRepo();
 

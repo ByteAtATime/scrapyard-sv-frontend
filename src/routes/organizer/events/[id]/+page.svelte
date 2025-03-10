@@ -22,21 +22,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { CONFIG } from '$lib/config';
 
-	const { data } = $props<{
-		event: {
-			id: number;
-			name: string;
-			description: string;
-			time: string;
-			attendancePoints: number;
-		};
-		attendance: Array<{
-			userId: number;
-			userName: string;
-			checkInTime: string;
-			checkedInBy: string;
-		}>;
-	}>();
+	const { data } = $props();
 
 	async function handleCheckIn(userId: number) {
 		try {

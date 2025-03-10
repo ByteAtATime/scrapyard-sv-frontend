@@ -9,6 +9,10 @@ import type { MiddlewareHandler } from './types';
 import { PointsService } from '../points';
 import { EventsService } from '$lib/server/events/service';
 import { UserService } from '../auth/service';
+import { ScrapperService } from '../scrapper/service';
+import { PostgresScrapperRepo } from '../scrapper/postgres';
+
+export type WithAuthProvider = { authProvider: IAuthProvider };
 
 export const withAuthProvider = <
 	TDeps extends { authProvider: IAuthProvider }
@@ -18,6 +22,8 @@ export const withAuthProvider = <
 		return next({ ...deps, authProvider } as unknown as TDeps);
 	};
 };
+
+export type WithShopService = { shopService: IShopService };
 
 export const withShopService = <TDeps extends { shopService: IShopService }>(): MiddlewareHandler<
 	Omit<TDeps, 'shopService'>
@@ -33,6 +39,8 @@ export const withShopService = <TDeps extends { shopService: IShopService }>(): 
 	};
 };
 
+export type WithPointsService = { pointsService: PointsService };
+
 export const withPointsService = <
 	TDeps extends { pointsService: PointsService }
 >(): MiddlewareHandler<Omit<TDeps, 'pointsService'>> => {
@@ -44,6 +52,8 @@ export const withPointsService = <
 		return next({ ...deps, pointsService } as unknown as TDeps);
 	};
 };
+
+export type WithUserService = { userService: UserService };
 
 export const withUserService = <TDeps extends { userService: UserService }>(): MiddlewareHandler<
 	Omit<TDeps, 'userService'>
@@ -64,12 +74,22 @@ export const withDependencies = <T extends Record<string, unknown>>(
 	};
 };
 
-export type EventsServiceDep = { eventsService: EventsService };
+export type WithEventsService = { eventsService: EventsService };
 
 export const withEventsService = () => {
 	return withDependencies<{ eventsService: EventsService }>(async ({ authProvider }) => {
 		return {
 			eventsService: new EventsService(new PostgresEventsRepo(), authProvider)
+		};
+	});
+};
+
+export type WithScrapperService = { scrapperService: ScrapperService };
+
+export const withScrapperService = () => {
+	return withDependencies<{ scrapperService: ScrapperService }>(async ({ authProvider }) => {
+		return {
+			scrapperService: new ScrapperService(new PostgresScrapperRepo(), authProvider)
 		};
 	});
 };

@@ -1,4 +1,13 @@
-import { pgTable, serial, text, pgEnum, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	serial,
+	text,
+	pgEnum,
+	timestamp,
+	integer,
+	boolean,
+	interval
+} from 'drizzle-orm/pg-core';
 
 export const authProviderEnum = pgEnum('auth_provider', ['clerk']);
 
@@ -137,5 +146,55 @@ export const shortenedUrlsTable = pgTable('shortened_urls', {
 	id: serial('id').primaryKey(),
 	originalUrl: text('original_url').notNull(),
 	slug: text('slug').notNull().unique(),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// TODO: generalize this for hackathons
+export const sessionStatusEnum = pgEnum('session_status', [
+	'active',
+	'paused',
+	'completed',
+	'cancelled'
+]);
+
+export const scrapperSessionsTable = pgTable('scrapper_sessions', {
+	id: serial('id').primaryKey(),
+	userId: integer('user_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	startTime: timestamp('start_time').defaultNow().notNull(),
+	endTime: timestamp('end_time'),
+	status: sessionStatusEnum('status').default('active').notNull(),
+	totalPausedTime: interval('total_paused_time').default('0 seconds').notNull(),
+	lastPausedAt: timestamp('last_paused_at'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const scrapsTable = pgTable('scraps', {
+	id: serial('id').primaryKey(),
+	sessionId: integer('session_id')
+		.references(() => scrapperSessionsTable.id)
+		.notNull(),
+	title: text('title').notNull(),
+	description: text('description').notNull(),
+	attachmentUrls: text('attachment_urls').array().notNull(),
+	basePoints: integer('base_points').notNull(),
+	totalPoints: integer('total_points').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const scrapVotesTable = pgTable('scrap_votes', {
+	id: serial('id').primaryKey(),
+	scrapId: integer('scrap_id')
+		.references(() => scrapsTable.id)
+		.notNull(),
+	voterId: integer('voter_id')
+		.references(() => usersTable.id)
+		.notNull(),
+	pointsAwarded: integer('points_awarded').notNull(),
+	transactionId: integer('transaction_id').references(() => pointTransactionsTable.id),
+	voterTransactionId: integer('voter_transaction_id').references(() => pointTransactionsTable.id),
 	createdAt: timestamp('created_at').defaultNow().notNull()
 });

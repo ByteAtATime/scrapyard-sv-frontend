@@ -1,5 +1,7 @@
 <script lang="ts">
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar';
+	import SignOutButton from 'clerk-sveltekit/client/SignOutButton.svelte';
 	import { LayoutDashboard, ShoppingBag, Trophy, UserRoundCog, Users } from 'lucide-svelte';
 
 	const items = [
@@ -81,4 +83,8 @@
 			</Sidebar.Group>
 		{/if}
 	</Sidebar.Content>
+	<Sidebar.Footer class="flex flex-row items-center justify-between">
+		<SignOutButton redirectUrl="/login" />
+		<ThemeToggle />
+	</Sidebar.Footer>
 </Sidebar.Root>

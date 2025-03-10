@@ -33,7 +33,8 @@ export default ts.config(
 	},
 	{
 		rules: {
-			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+			'svelte/no-unused-svelte-ignore': 'off' // TODO: why doesn't it detect warning in AttachmentPreview.svelte?
 		}
 	}
 );
