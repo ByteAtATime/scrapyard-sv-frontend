@@ -7,7 +7,10 @@
 		Coins,
 		UserRoundCog,
 		Calendar,
-		ShoppingBag
+		ShoppingBag,
+		Code,
+		Vote,
+		Video
 	} from 'lucide-svelte';
 	import { CONFIG } from '$lib/config';
 
@@ -38,6 +41,29 @@
 			icon: ShoppingBag
 		}
 	];
+
+	const scrapperItemss = [
+		{
+			title: 'Scrapper',
+			url: '/organizer/scrapper',
+			icon: Code
+		},
+		{
+			title: 'Sessions',
+			url: '/organizer/sessions',
+			icon: Calendar
+		},
+		{
+			title: 'Scraps',
+			url: '/organizer/scraps',
+			icon: Video
+		},
+		{
+			title: 'Votes',
+			url: '/organizer/votes',
+			icon: Vote
+		}
+	];
 </script>
 
 <Sidebar.Root collapsible="icon" variant="inset">
@@ -55,6 +81,26 @@
 			<Sidebar.GroupContent>
 				<Sidebar.Menu>
 					{#each items as item (item.title)}
+						<Sidebar.MenuItem>
+							<Sidebar.MenuButton>
+								{#snippet child({ props })}
+									<a href={item.url} {...props}>
+										<item.icon />
+										<span>{item.title}</span>
+									</a>
+								{/snippet}
+							</Sidebar.MenuButton>
+						</Sidebar.MenuItem>
+					{/each}
+				</Sidebar.Menu>
+			</Sidebar.GroupContent>
+		</Sidebar.Group>
+		<Sidebar.Separator />
+		<Sidebar.Group>
+			<Sidebar.GroupLabel>Scrapper</Sidebar.GroupLabel>
+			<Sidebar.GroupContent>
+				<Sidebar.Menu>
+					{#each scrapperItemss as item (item.title)}
 						<Sidebar.MenuItem>
 							<Sidebar.MenuButton>
 								{#snippet child({ props })}
