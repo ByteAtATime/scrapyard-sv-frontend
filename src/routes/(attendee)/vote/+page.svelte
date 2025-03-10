@@ -4,6 +4,7 @@
 	import { superForm } from 'sveltekit-superforms/client';
 	import { toast } from 'svelte-sonner';
 	import { Loader2 } from 'lucide-svelte';
+	import type { ScrapData } from '$lib/server/scrapper';
 
 	let { data } = $props();
 
@@ -45,6 +46,11 @@
 			{#each data.scraps as scrap (scrap.id)}
 				<form method="POST" action="?/vote" use:enhance>
 					<input type="hidden" name="scrapId" value={scrap.id} />
+					<input
+						type="hidden"
+						name="otherScrapId"
+						value={data.scraps.find((s: ScrapData) => s.id !== scrap.id)?.id}
+					/>
 					<Card.Root class="h-full">
 						<Card.Header>
 							<Card.Title>{scrap.title}</Card.Title>
@@ -75,7 +81,7 @@
 		</div>
 	{:else}
 		<Card.Root>
-			<Card.Header>
+			<Card.Header class="mb-6">
 				<Card.Title>No scraps to vote on</Card.Title>
 				<Card.Description>There are no eligible scraps to vote on at the moment.</Card.Description>
 			</Card.Header>

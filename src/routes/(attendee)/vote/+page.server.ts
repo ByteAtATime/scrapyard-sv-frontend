@@ -14,6 +14,7 @@ import { fail } from 'sveltekit-superforms';
 import { superValidate } from 'sveltekit-superforms/server';
 import { voteSchema } from '../scrapper/schema';
 import { zod } from 'sveltekit-superforms/adapters';
+import type { ScrapData } from '$lib/server/scrapper';
 
 const voteHandler: PageHandler<
 	WithAuthProvider & WithScrapperService & WithSuperForm<typeof voteSchema>
@@ -43,7 +44,6 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 	authProvider,
 	scrapperService
 }) => {
-	// Always create the form first
 	const form = await superValidate(zod(voteSchema));
 
 	const userId = await authProvider.getUserId();
@@ -54,8 +54,17 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 		};
 	}
 
-	// Get two random scraps to vote on
-	const scraps = await scrapperService.getRandomScrapsForVoting(userId);
+	let scraps: ScrapData[] = [];
+
+	try {
+		scraps = await scrapperService.getRandomScrapsForVoting(userId);
+	} catch (error) {
+		console.error(error);
+		return {
+			scraps: [],
+			voteForm: form
+		};
+	}
 
 	return {
 		scraps,

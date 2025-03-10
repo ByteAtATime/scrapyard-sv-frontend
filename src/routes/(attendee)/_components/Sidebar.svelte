@@ -2,7 +2,15 @@
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import SignOutButton from 'clerk-sveltekit/client/SignOutButton.svelte';
-	import { LayoutDashboard, ShoppingBag, Trophy, UserRoundCog, Users } from 'lucide-svelte';
+	import {
+		LayoutDashboard,
+		ShoppingBag,
+		Trophy,
+		UserRoundCog,
+		Users,
+		Code,
+		Vote
+	} from 'lucide-svelte';
 
 	const items = [
 		{
@@ -24,6 +32,16 @@
 			title: 'Leaderboard',
 			url: '/leaderboard',
 			icon: Trophy
+		},
+		{
+			title: 'Scrapper',
+			url: '/scrapper',
+			icon: Code
+		},
+		{
+			title: 'Scrap Voting',
+			url: '/vote',
+			icon: Vote
 		}
 	];
 
