@@ -50,17 +50,17 @@
 		},
 		{
 			title: 'Sessions',
-			url: '/organizer/sessions',
+			url: '/organizer/scrapper/sessions',
 			icon: Calendar
 		},
 		{
 			title: 'Scraps',
-			url: '/organizer/scraps',
+			url: '/organizer/scrapper/scraps',
 			icon: Video
 		},
 		{
 			title: 'Votes',
-			url: '/organizer/votes',
+			url: '/organizer/scrapper/votes',
 			icon: Vote
 		}
 	];
