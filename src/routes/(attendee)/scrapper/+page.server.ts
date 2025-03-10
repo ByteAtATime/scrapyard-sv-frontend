@@ -127,9 +127,9 @@ const completeSessionHandler: PageHandler<
 		});
 
 		// Complete the session
-		const completedSession = await scrapperService.completeSession(userId);
+		await scrapperService.completeSession(userId);
 
-		return withFiles({ success: true, data: { session: completedSession, scrap }, form });
+		return withFiles({ success: true, data: { session: null, scrap }, form });
 	} catch (error) {
 		console.error(error);
 		return fail(400, {
