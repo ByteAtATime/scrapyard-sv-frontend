@@ -34,7 +34,7 @@ describe('events', () => {
 
 			const result = await endpoint_GET({ eventsService });
 
-			expect(result).toEqual([mockEvent]);
+			expect(result).toEqual([await mockEvent.toJson()]);
 			expect(eventsService.getAllEvents).toHaveBeenCalled();
 		});
 
@@ -47,7 +47,7 @@ describe('events', () => {
 
 			const result = await endpoint_GET({ eventsService });
 
-			expect(result).toEqual([mockEvent, mockEvent2]);
+			expect(result).toEqual([await mockEvent.toJson(), await mockEvent2.toJson()]);
 			expect(eventsService.getAllEvents).toHaveBeenCalled();
 		});
 

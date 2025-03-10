@@ -15,7 +15,17 @@ export const endpoint_GET: EndpointHandler<{
 	eventsService: EventsService;
 }> = async ({ eventsService }) => {
 	try {
-		return await eventsService.getAllEvents();
+		const events = await eventsService.getAllEvents();
+
+		const promises = await Promise.allSettled(events.map((e) => e.toJson()));
+
+		return promises
+			.map((r) => {
+				if (r.status === 'fulfilled') {
+					return r.value;
+				}
+			})
+			.filter(Boolean);
 	} catch (error) {
 		// Map domain errors to HTTP responses
 		if (error instanceof NotAuthenticatedError || error instanceof NotOrganizerError) {
