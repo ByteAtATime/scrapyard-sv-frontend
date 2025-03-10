@@ -44,13 +44,13 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 	authProvider,
 	scrapperService
 }) => {
-	const form = await superValidate(zod(voteSchema));
+	const emptyForm = await superValidate(zod(voteSchema));
 
 	const userId = await authProvider.getUserId();
 	if (!userId) {
 		return {
 			scraps: [],
-			voteForm: form
+			voteForm: emptyForm
 		};
 	}
 
@@ -62,9 +62,17 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 		console.error(error);
 		return {
 			scraps: [],
-			voteForm: form
+			voteForm: emptyForm
 		};
 	}
+
+	const form = await superValidate(
+		{
+			scrapId: scraps[0].id,
+			otherScrapId: scraps[1].id
+		},
+		zod(voteSchema)
+	);
 
 	return {
 		scraps,
