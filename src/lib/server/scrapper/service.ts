@@ -10,14 +10,20 @@ import type {
 	ScrapWithUser,
 	SessionFilters
 } from './types';
-import { SessionAlreadyStartedError, SessionNotFoundError } from './types';
-import { Session } from './session';
+import {
+	CREATOR_POINTS_PER_HOUR_PER_VOTE,
+	SessionAlreadyStartedError,
+	SessionNotFoundError
+} from './types';
+import { Session, VOTER_POINTS_PER_VOTE } from './session';
 import type { IAuthProvider } from '../auth';
+import type { IPointsService } from '../points';
 
 export class ScrapperService implements IScrapperService {
 	constructor(
 		private readonly repo: IScrapperRepo,
-		private readonly authProvider: IAuthProvider
+		private readonly authProvider: IAuthProvider,
+		private readonly pointsService: IPointsService
 	) {}
 
 	async createSession(userId: number): Promise<SessionData> {
@@ -114,13 +120,44 @@ export class ScrapperService implements IScrapperService {
 	}
 
 	async voteOnScrap(input: CreateVoteInput): Promise<VoteData> {
+		// 1. Create the vote (using the repository - now simplified)
 		const vote = await this.repo.createVote({
 			userId: input.userId,
 			scrapId: input.scrapId,
 			otherScrapId: input.otherScrapId
 		});
 
-		await this.repo.updateScrapPoints(input.scrapId, 2);
+		// 2. Get the scrap and session information (using the repository)
+		const scrap = await this.repo.getScrapById(input.scrapId);
+		if (!scrap) {
+			throw new Error('Scrap not found'); // Or a custom error
+		}
+		const session = await this.repo.getSessionById(scrap.sessionId);
+		if (!session) {
+			throw new Error('Session not found'); // Or a custom error
+		}
+
+		// 3. Calculate points (business logic - could be in a domain object)
+		const sessionObj = Session.fromDB(session, this.authProvider);
+		const durationHours = sessionObj.getSessionDurationMinutes() / 60;
+		const voterPoints = VOTER_POINTS_PER_VOTE;
+		const creatorPoints = Math.floor(durationHours * CREATOR_POINTS_PER_HOUR_PER_VOTE);
+
+		// 4. Award points to the voter (using the PointsService)
+		await this.pointsService.createTransaction({
+			userId: input.userId,
+			amount: voterPoints,
+			reason: `Voted on scrap #${input.scrapId}`,
+			authorId: input.userId // Or a system user ID
+		});
+
+		// 5. Award points to the scrap creator (using the PointsService)
+		await this.pointsService.createTransaction({
+			userId: scrap.userId,
+			amount: creatorPoints,
+			reason: `Received vote on scrap #${input.scrapId} (${Math.floor(durationHours)} hours)`,
+			authorId: input.userId // Or a system user ID
+		});
 
 		return vote;
 	}

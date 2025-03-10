@@ -88,8 +88,9 @@ export type WithScrapperService = { scrapperService: ScrapperService };
 
 export const withScrapperService = () => {
 	return withDependencies<{ scrapperService: ScrapperService }>(async ({ authProvider }) => {
+		const pointsService = new PointsService(new PostgresPointsRepo(), authProvider);
 		return {
-			scrapperService: new ScrapperService(new PostgresScrapperRepo(), authProvider)
+			scrapperService: new ScrapperService(new PostgresScrapperRepo(), authProvider, pointsService)
 		};
 	});
 };

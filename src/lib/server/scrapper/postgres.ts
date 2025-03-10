@@ -21,8 +21,6 @@ import type {
 } from './types';
 
 const DEFAULT_POINTS_PER_HOUR = 100;
-const VOTER_POINTS_PER_VOTE = 1;
-const CREATOR_POINTS_PER_HOUR_PER_VOTE = 1;
 
 export class PostgresScrapperRepo implements IScrapperRepo {
 	private convertToSessionData(
@@ -476,75 +474,17 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 		scrapId: number;
 		otherScrapId: number;
 	}): Promise<VoteData> {
-		// First get the scrap to find its session and creator
-		const [scrap] = await db
-			.select({
-				id: scrapsTable.id,
-				sessionId: scrapsTable.sessionId,
-				userId: scrapperSessionsTable.userId,
-				startTime: scrapperSessionsTable.startTime,
-				endTime: scrapperSessionsTable.endTime,
-				totalPausedTime: scrapperSessionsTable.totalPausedTime
-			})
-			.from(scrapsTable)
-			.innerJoin(scrapperSessionsTable, eq(scrapsTable.sessionId, scrapperSessionsTable.id))
-			.where(eq(scrapsTable.id, input.scrapId))
-			.limit(1);
-
-		if (!scrap) {
-			throw new Error('Scrap not found');
-		}
-
-		// Calculate session duration in hours
-		const endTime = scrap.endTime || new Date();
-		const durationMs = endTime.getTime() - scrap.startTime.getTime();
-		// Get totalPausedSeconds as a separate query
-		const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-			drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-				FROM ${scrapperSessionsTable} 
-				WHERE id = ${scrap.sessionId}`
-		);
-		const durationSeconds = Math.floor(durationMs / 1000) - totalPausedSeconds;
-		const durationHours = Math.max(0, durationSeconds / 3600);
-
-		// Create the vote and both point transactions in a transaction
+		// Only interact with scrapVotesTable here.
 		const [vote] = await db.transaction(async (tx) => {
-			// Create the vote
 			const [vote] = await tx
 				.insert(scrapVotesTable)
 				.values({
 					voterId: input.userId,
 					scrapId: input.scrapId,
 					otherScrapId: input.otherScrapId,
-					pointsAwarded: VOTER_POINTS_PER_VOTE
+					pointsAwarded: 0 // We'll remove points from here.
 				})
 				.returning();
-
-			// Create point transaction for voter
-			await tx
-				.insert(pointTransactionsTable)
-				.values({
-					userId: input.userId,
-					amount: VOTER_POINTS_PER_VOTE,
-					reason: `Voted on scrap #${input.scrapId}`,
-					authorId: input.userId,
-					status: 'approved'
-				})
-				.returning();
-
-			// Create point transaction for scrap creator
-			const creatorPoints = Math.floor(durationHours * CREATOR_POINTS_PER_HOUR_PER_VOTE);
-			await tx
-				.insert(pointTransactionsTable)
-				.values({
-					userId: scrap.userId,
-					amount: creatorPoints,
-					reason: `Received vote on scrap #${input.scrapId} (${Math.floor(durationHours)} hours)`,
-					authorId: input.userId,
-					status: 'approved'
-				})
-				.returning();
-
 			return [vote];
 		});
 
@@ -553,7 +493,7 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			userId: vote.voterId,
 			scrapId: vote.scrapId,
 			otherScrapId: input.otherScrapId, // We'll add this to schema later
-			points: vote.pointsAwarded,
+			points: 0, // No points calculated here
 			createdAt: vote.createdAt
 		};
 	}
