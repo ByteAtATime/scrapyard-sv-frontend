@@ -133,7 +133,7 @@
 							<input
 								type="file"
 								name="images"
-								accept="image/*"
+								accept="image/jpeg, image/png, image/gif, image/webp, video/mp4, video/webm, video/ogg"
 								multiple
 								class="hidden"
 								onchange={handleImageSelect}
