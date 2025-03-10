@@ -96,9 +96,7 @@ export class ScrapperService implements IScrapperService {
 		if (session.status === 'completed' || session.status === 'cancelled')
 			throw new Error('Session is already completed or cancelled');
 
-		const dbSession = await this.repo.updateSession(session.id, {
-			status: 'cancelled'
-		});
+		const dbSession = await this.repo.cancelSession(session.id);
 
 		return Session.fromDB(dbSession, this.authProvider).toJson();
 	}

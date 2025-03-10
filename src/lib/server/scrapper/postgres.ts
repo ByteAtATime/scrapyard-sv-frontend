@@ -297,8 +297,6 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			const durationSeconds = Math.floor(durationMs / 1000) - totalPausedSeconds;
 			const durationHours = Math.max(0, durationSeconds / 3600);
 
-			console.log(durationHours);
-
 			// Award points based on duration
 			const points = Math.floor(durationHours * DEFAULT_POINTS_PER_HOUR);
 			if (points > 0) {
