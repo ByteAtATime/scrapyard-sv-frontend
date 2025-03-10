@@ -40,7 +40,7 @@ export class PostgresPointsRepo implements IPointsRepo {
 						WHEN ${pointTransactionsTable.status} = 'pending' AND ${pointTransactionsTable.amount} < 0 THEN ${pointTransactionsTable.amount}
 						ELSE 0 
 					END
-				), 0)`
+				), 0)`.mapWith(Number)
 			})
 			.from(pointTransactionsTable)
 			.where(
