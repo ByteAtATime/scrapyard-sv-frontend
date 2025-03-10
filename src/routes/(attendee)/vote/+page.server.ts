@@ -33,6 +33,7 @@ const voteHandler: PageHandler<
 
 		return { success: true, data: vote, form };
 	} catch (error) {
+		console.error(error);
 		return fail(400, {
 			form,
 			error: error instanceof Error ? error.message : 'Failed to submit vote'

@@ -190,6 +190,9 @@ export const scrapVotesTable = pgTable('scrap_votes', {
 	scrapId: integer('scrap_id')
 		.references(() => scrapsTable.id)
 		.notNull(),
+	otherScrapId: integer('other_scrap_id')
+		.references(() => scrapsTable.id)
+		.notNull(),
 	voterId: integer('voter_id')
 		.references(() => usersTable.id)
 		.notNull(),

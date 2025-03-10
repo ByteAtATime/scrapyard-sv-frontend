@@ -515,6 +515,7 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 				.values({
 					voterId: input.userId,
 					scrapId: input.scrapId,
+					otherScrapId: input.otherScrapId,
 					pointsAwarded: VOTER_POINTS_PER_VOTE
 				})
 				.returning();
