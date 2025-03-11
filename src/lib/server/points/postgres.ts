@@ -157,7 +157,7 @@ export class PostgresPointsRepo implements IPointsRepo {
 						END
 					),
 					0
-				)`
+				)`.mapWith(Number)
 			})
 			.from(usersTable)
 			.leftJoin(pointTransactionsTable, eq(usersTable.id, pointTransactionsTable.userId))
