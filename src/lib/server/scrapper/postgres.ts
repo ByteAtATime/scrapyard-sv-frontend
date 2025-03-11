@@ -48,11 +48,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 
 		if (session) {
 			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${session.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, session.id));
 
 			return { ...session, totalPausedSeconds };
 		}
@@ -73,11 +74,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 
 		if (session) {
 			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${session.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, session.id));
 
 			return { ...session, totalPausedSeconds };
 		}
@@ -124,11 +126,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			.returning();
 
 		// Get totalPausedSeconds as a separate query
-		const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-			drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                FROM ${scrapperSessionsTable} 
-                WHERE id = ${updatedSession.id}`
-		);
+		const [{ totalPausedSeconds }] = await db
+			.select({
+				totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+			})
+			.from(scrapperSessionsTable)
+			.where(eq(scrapperSessionsTable.id, updatedSession.id));
 
 		return { ...updatedSession, totalPausedSeconds };
 	}
@@ -145,21 +148,11 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 
 		const currentTime = new Date();
 
-		// We need to avoid using raw Date objects in SQL template literals
 		if (session.lastPausedAt) {
-			// First calculate the pause duration and format it as an interval string
 			const pausedMs = currentTime.getTime() - new Date(session.lastPausedAt).getTime();
 			const pausedSeconds = Math.floor(pausedMs / 1000);
 			const pauseIntervalStr = `${pausedSeconds} seconds`;
 
-			console.log('Adding pause interval:', {
-				lastPausedAt: session.lastPausedAt,
-				currentTime,
-				pausedSeconds,
-				pauseIntervalStr
-			});
-
-			// Then update the session with a safely formatted interval
 			const [updatedSession] = await db
 				.update(scrapperSessionsTable)
 				.set({
@@ -171,20 +164,15 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 				.where(eq(scrapperSessionsTable.id, sessionId))
 				.returning();
 
-			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${updatedSession.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, sessionId));
 
-			console.log('Updated session with pause interval:', {
-				...updatedSession,
-				totalPausedSeconds
-			});
 			return { ...updatedSession, totalPausedSeconds };
 		} else {
-			// If there's no lastPausedAt, just update the status
 			const [updatedSession] = await db
 				.update(scrapperSessionsTable)
 				.set({
@@ -195,12 +183,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 				.where(eq(scrapperSessionsTable.id, sessionId))
 				.returning();
 
-			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${updatedSession.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, sessionId));
 
 			return { ...updatedSession, totalPausedSeconds };
 		}
@@ -244,11 +232,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 				.returning();
 
 			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${updatedSession.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, updatedSession.id));
 
 			// Calculate session duration in hours
 			const durationMs = currentTime.getTime() - updatedSession.startTime.getTime();
@@ -284,11 +273,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 				.returning();
 
 			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${updatedSession.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, updatedSession.id));
 
 			// Calculate session duration in hours
 			const durationMs = currentTime.getTime() - updatedSession.startTime.getTime();
@@ -326,11 +316,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			.returning();
 
 		// Get totalPausedSeconds as a separate query
-		const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-			drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                FROM ${scrapperSessionsTable} 
-                WHERE id = ${updatedSession.id}`
-		);
+		const [{ totalPausedSeconds }] = await db
+			.select({
+				totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+			})
+			.from(scrapperSessionsTable)
+			.where(eq(scrapperSessionsTable.id, updatedSession.id));
 
 		return { ...updatedSession, totalPausedSeconds };
 	}
@@ -343,11 +334,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 
 		if (session) {
 			// Get totalPausedSeconds as a separate query
-			const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-				drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                    FROM ${scrapperSessionsTable} 
-                    WHERE id = ${session.id}`
-			);
+			const [{ totalPausedSeconds }] = await db
+				.select({
+					totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+				})
+				.from(scrapperSessionsTable)
+				.where(eq(scrapperSessionsTable.id, session.id));
 
 			return { ...session, totalPausedSeconds };
 		}
@@ -366,11 +358,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			.returning();
 
 		// Get totalPausedSeconds as a separate query
-		const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-			drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-                FROM ${scrapperSessionsTable} 
-                WHERE id = ${updatedSession.id}`
-		);
+		const [{ totalPausedSeconds }] = await db
+			.select({
+				totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+			})
+			.from(scrapperSessionsTable)
+			.where(eq(scrapperSessionsTable.id, updatedSession.id));
 
 		return { ...updatedSession, totalPausedSeconds };
 	}
@@ -605,11 +598,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 		return Promise.all(
 			sessions.map(async (session) => {
 				// Get totalPausedSeconds as a separate query
-				const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-					drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-						FROM ${scrapperSessionsTable} 
-						WHERE id = ${session.id}`
-				);
+				const [{ totalPausedSeconds }] = await db
+					.select({
+						totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+					})
+					.from(scrapperSessionsTable)
+					.where(eq(scrapperSessionsTable.id, session.id));
 
 				// Calculate duration in minutes
 				const endTime = session.endTime || new Date();
@@ -706,11 +700,12 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 		return Promise.all(
 			sessions.map(async (session) => {
 				// Get totalPausedSeconds as a separate query
-				const [{ totalPausedSeconds }] = await db.execute<{ totalPausedSeconds: number }>(
-					drizzleSql`SELECT EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int as "totalPausedSeconds" 
-						FROM ${scrapperSessionsTable} 
-						WHERE id = ${session.id}`
-				);
+				const [{ totalPausedSeconds }] = await db
+					.select({
+						totalPausedSeconds: sql<number>`EXTRACT(EPOCH FROM ${scrapperSessionsTable.totalPausedTime})::int`
+					})
+					.from(scrapperSessionsTable)
+					.where(eq(scrapperSessionsTable.id, session.id));
 
 				// Calculate duration in minutes
 				const endTime = session.endTime || new Date();
