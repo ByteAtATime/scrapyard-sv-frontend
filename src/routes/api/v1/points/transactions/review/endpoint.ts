@@ -1,3 +1,4 @@
+import type { IAuthProvider } from '$lib/server/auth';
 import type { EndpointHandler } from '$lib/server/endpoints';
 import type { PointsService } from '$lib/server/points/service';
 import {
@@ -16,15 +17,23 @@ export const postSchema = z.object({
 
 export const endpoint_POST: EndpointHandler<{
 	pointsService: PointsService;
+	authProvider: IAuthProvider;
 	body: z.infer<typeof postSchema>;
-}> = async ({ pointsService, body }) => {
+}> = async ({ pointsService, authProvider, body }) => {
 	const { transactionId, status, rejectionReason } = body;
+
+	if (!(await authProvider.isOrganizer())) {
+		return {
+			error: 'Not authorized',
+			status: 403
+		};
+	}
 
 	try {
 		const result = await pointsService.reviewTransaction(transactionId, {
 			status,
 			rejectionReason,
-			reviewerId: 0 // This will be overridden by the service
+			reviewerId: (await authProvider.getUserId())!
 		});
 		return { success: true, transaction: result };
 	} catch (error) {
