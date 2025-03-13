@@ -11,18 +11,7 @@ import { eq, and, not, sql } from 'drizzle-orm';
 export interface IUserService {
 	getUserById(id: number): Promise<UserData>;
 	getAllUsers(includePoints?: boolean): Promise<UserData[]>;
-	handleUserCreated(userData: {
-		authProviderId: string;
-		email: string;
-		name: string;
-		avatarUrl: string | null;
-	}): Promise<UserData>;
-	handleUserUpdated(userData: {
-		authProviderId: string;
-		email: string;
-		name: string;
-		avatarUrl: string | null;
-	}): Promise<void>;
+	updateUserAvatar(authProviderId: string, avatarUrl: string | null): Promise<void>;
 }
 
 export class AuthService implements IAuthProvider {
@@ -211,5 +200,17 @@ export class UserService implements IUserService {
 				avatarUrl
 			})
 			.where(eq(usersTable.id, user.id));
+	}
+
+	async updateUserAvatar(authProviderId: string, avatarUrl: string | null): Promise<void> {
+		const user = await db.query.usersTable.findFirst({
+			where: eq(usersTable.authProviderId, authProviderId)
+		});
+
+		if (!user) {
+			throw new Error(`User with authProviderId ${authProviderId} not found`);
+		}
+
+		await db.update(usersTable).set({ avatarUrl }).where(eq(usersTable.id, user.id));
 	}
 }

@@ -6,17 +6,6 @@ import { z } from 'zod';
 export const webhookSchema = z.object({
 	data: z.object({
 		id: z.string(),
-		email_addresses: z.array(
-			z.object({
-				email_address: z.string().email(),
-				id: z.string(),
-				verification: z.object({
-					status: z.string()
-				})
-			})
-		),
-		first_name: z.string().nullable(),
-		last_name: z.string().nullable(),
 		profile_image_url: z.string().url().nullable(),
 		image_url: z.string().url().nullable()
 	}),
@@ -30,32 +19,9 @@ export const endpoint_POST: EndpointHandler<{
 	body: WebhookPayload;
 }> = async ({ userService, body }) => {
 	try {
-		const { data, type } = body;
-
-		// Extract the fields we need
-		const authProviderId = data.id;
-		const email = data.email_addresses[0]?.email_address || '';
-		const name = `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'User';
-
-		// Use profile_image_url or fall back to image_url
+		const { data } = body;
 		const avatarUrl = data.profile_image_url || data.image_url || null;
-
-		if (type === 'user.created') {
-			await userService.handleUserCreated({
-				authProviderId,
-				email,
-				name,
-				avatarUrl
-			});
-		} else if (type === 'user.updated') {
-			await userService.handleUserUpdated({
-				authProviderId,
-				email,
-				name,
-				avatarUrl
-			});
-		}
-
+		await userService.updateUserAvatar(data.id, avatarUrl);
 		return { success: true };
 	} catch (error) {
 		console.error('Error processing user webhook:', error);
