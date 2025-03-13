@@ -160,7 +160,8 @@ export class PostgresTeamsRepo implements ITeamsRepo {
 					email: usersTable.email,
 					authProvider: usersTable.authProvider,
 					authProviderId: usersTable.authProviderId,
-					isOrganizer: usersTable.isOrganizer
+					isOrganizer: usersTable.isOrganizer,
+					avatarUrl: usersTable.avatarUrl
 				}
 			})
 			.from(teamMembersTable)

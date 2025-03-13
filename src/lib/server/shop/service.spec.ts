@@ -35,7 +35,8 @@ describe('ShopService', () => {
 					email: 'test@example.com',
 					isOrganizer: true,
 					authProvider: 'clerk',
-					authProviderId: 'test_id'
+					authProviderId: 'test_id',
+					avatarUrl: null
 				})
 			),
 			getUserById: vi.fn().mockResolvedValue(null)
@@ -195,7 +196,8 @@ describe('ShopService', () => {
 			email: 'test@example.com',
 			authProvider: 'clerk',
 			authProviderId: 'test-id',
-			isOrganizer: true
+			isOrganizer: true,
+			avatarUrl: null
 		};
 		const mockUser = new User(mockUserData);
 

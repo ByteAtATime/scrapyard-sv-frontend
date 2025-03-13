@@ -8,7 +8,8 @@ export const userJsonSchema = z.object({
 	name: z.string(),
 	email: z.string(),
 	totalPoints: z.coerce.number(),
-	isOrganizer: z.boolean()
+	isOrganizer: z.boolean(),
+	avatarUrl: z.string().nullable()
 });
 export type UserJson = z.infer<typeof userJsonSchema>;
 
@@ -46,14 +47,19 @@ export class User {
 		return this._data.isOrganizer;
 	}
 
+	public get avatarUrl(): string | null {
+		return this._data.avatarUrl || null;
+	}
+
 	public toJson(): UserJson {
-		return userJsonSchema.parse({
+		return {
 			id: this.id,
 			name: this.name,
 			email: this.email,
 			totalPoints: this.totalPoints,
-			isOrganizer: this.isOrganizer
-		});
+			isOrganizer: this.isOrganizer,
+			avatarUrl: this.avatarUrl
+		};
 	}
 
 	public static fromUserData(userData: UserData, totalPoints: number): User {

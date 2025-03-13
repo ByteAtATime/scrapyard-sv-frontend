@@ -13,7 +13,8 @@ describe('GET /api/v1/users/[id]', () => {
 		email: 'test@example.com',
 		isOrganizer: false,
 		authProvider: 'clerk',
-		authProviderId: 'test_id'
+		authProviderId: 'test_id',
+		avatarUrl: null
 	};
 
 	const mockAuthProvider: IAuthProvider = {

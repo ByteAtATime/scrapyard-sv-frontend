@@ -11,6 +11,18 @@ import { eq, and, not, sql } from 'drizzle-orm';
 export interface IUserService {
 	getUserById(id: number): Promise<UserData>;
 	getAllUsers(includePoints?: boolean): Promise<UserData[]>;
+	handleUserCreated(userData: {
+		authProviderId: string;
+		email: string;
+		name: string;
+		avatarUrl: string | null;
+	}): Promise<UserData>;
+	handleUserUpdated(userData: {
+		authProviderId: string;
+		email: string;
+		name: string;
+		avatarUrl: string | null;
+	}): Promise<void>;
 }
 
 export class AuthService implements IAuthProvider {
@@ -133,5 +145,71 @@ export class UserService implements IUserService {
 		}
 
 		return users;
+	}
+
+	async handleUserCreated({
+		authProviderId,
+		email,
+		name,
+		avatarUrl
+	}: {
+		authProviderId: string;
+		email: string;
+		name: string;
+		avatarUrl: string | null;
+	}): Promise<UserData> {
+		// Check if user already exists
+		const existingUser = await db.query.usersTable.findFirst({
+			where: eq(usersTable.authProviderId, authProviderId)
+		});
+
+		if (existingUser) {
+			return existingUser;
+		}
+
+		// Create new user
+		const [newUser] = await db
+			.insert(usersTable)
+			.values({
+				name,
+				email,
+				authProvider: 'clerk',
+				authProviderId,
+				avatarUrl
+			})
+			.returning();
+
+		return newUser;
+	}
+
+	async handleUserUpdated({
+		authProviderId,
+		email,
+		name,
+		avatarUrl
+	}: {
+		authProviderId: string;
+		email: string;
+		name: string;
+		avatarUrl: string | null;
+	}): Promise<void> {
+		// Find the user by authProviderId
+		const user = await db.query.usersTable.findFirst({
+			where: eq(usersTable.authProviderId, authProviderId)
+		});
+
+		if (!user) {
+			throw new Error(`User with authProviderId ${authProviderId} not found`);
+		}
+
+		// Update user information
+		await db
+			.update(usersTable)
+			.set({
+				name,
+				email,
+				avatarUrl
+			})
+			.where(eq(usersTable.id, user.id));
 	}
 }

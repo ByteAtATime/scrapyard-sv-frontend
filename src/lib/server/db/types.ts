@@ -25,6 +25,7 @@ export interface UserData {
 	authProvider: 'clerk';
 	authProviderId: string;
 	isOrganizer: boolean;
+	avatarUrl: string | null;
 	totalPoints?: number;
 	[key: string]: unknown;
 }

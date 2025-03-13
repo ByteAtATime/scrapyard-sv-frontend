@@ -28,6 +28,9 @@
 	<div class="flex flex-col items-center gap-3 @md:flex-row">
 		<div class="flex grow flex-col items-center gap-4 @md:flex-row">
 			<Avatar.Root class="size-{compact ? '8' : '10'}">
+				{#if user.avatarUrl}
+					<Avatar.Image src={user.avatarUrl} alt={user.name} />
+				{/if}
 				<Avatar.Fallback>
 					<UserIcon class="size-{compact ? '4' : '5'} text-muted-foreground" />
 				</Avatar.Fallback>

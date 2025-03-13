@@ -14,7 +14,8 @@ describe('PostgresUserRepo', () => {
 		email = 'test@example.com',
 		authProvider = 'clerk' as const,
 		authProviderId = 'test-id',
-		isOrganizer = false
+		isOrganizer = false,
+		avatarUrl = null
 	}: Partial<UserData> = {}): Promise<UserData> => {
 		const userData = {
 			id,
@@ -22,7 +23,8 @@ describe('PostgresUserRepo', () => {
 			email,
 			authProvider,
 			authProviderId,
-			isOrganizer
+			isOrganizer,
+			avatarUrl
 		};
 		await db.insert(usersTable).values(userData);
 		return userData;

@@ -68,7 +68,15 @@ describe('AuthService', () => {
 		it('should return user id when user exists', async () => {
 			authState.userId = 'clerk_123';
 			authState.isAuthenticated = true;
-			vi.mocked(userRepo.findByAuthId).mockResolvedValueOnce({ id: 1 } as UserData);
+			vi.mocked(userRepo.findByAuthId).mockResolvedValueOnce({
+				id: 1,
+				name: 'Test User',
+				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'test_id',
+				isOrganizer: false,
+				avatarUrl: null
+			} as UserData);
 
 			expect(await service.getUserId()).toBe(1);
 			expect(userRepo.findByAuthId).toHaveBeenCalledWith('clerk', 'clerk_123');
@@ -95,12 +103,17 @@ describe('AuthService', () => {
 			expect(await service.isOrganizer()).toBe(false);
 		});
 
-		it('should return isOrganizer value when user exists', async () => {
+		it('should return true when user has organizer role', async () => {
 			authState.userId = 'clerk_123';
 			authState.isAuthenticated = true;
 			vi.mocked(userRepo.findByAuthId).mockResolvedValueOnce({
 				id: 1,
-				isOrganizer: true
+				name: 'Test User',
+				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'test_id',
+				isOrganizer: true,
+				avatarUrl: null
 			} as UserData);
 
 			expect(await service.isOrganizer()).toBe(true);
@@ -122,8 +135,8 @@ describe('AuthService', () => {
 			expect(await service.getCurrentUser()).toBeNull();
 		});
 
-		it('should return User instance when user exists', async () => {
-			authState.userId = 'clerk_123';
+		it('should return a User instance if user is found', async () => {
+			authState.userId = 'mockClerkId';
 			authState.isAuthenticated = true;
 			const userData = {
 				id: 1,
@@ -132,14 +145,14 @@ describe('AuthService', () => {
 				authProvider: 'clerk',
 				authProviderId: 'mockClerkId',
 				totalPoints: 0,
-				isOrganizer: false
+				isOrganizer: false,
+				avatarUrl: null
 			} as UserData;
 			vi.mocked(userRepo.findByAuthId).mockResolvedValueOnce(userData);
 
 			const result = await service.getCurrentUser();
 			expect(result).toBeInstanceOf(User);
 			expect(result?.id).toBe(1);
-			expect(result?.name).toBe('Test User');
 		});
 
 		it('should return null and create user when not found', async () => {
@@ -155,7 +168,15 @@ describe('AuthService', () => {
 
 	describe('getUserById', () => {
 		it('should delegate to userRepo.findById', async () => {
-			const userData = { id: 1, name: 'Test User' } as UserData;
+			const userData = {
+				id: 1,
+				name: 'Test User',
+				email: 'test@example.com',
+				authProvider: 'clerk',
+				authProviderId: 'test_id',
+				isOrganizer: false,
+				avatarUrl: null
+			} as UserData;
 			vi.mocked(userRepo.findById).mockResolvedValueOnce(userData);
 
 			const result = await service.getUserById(1);

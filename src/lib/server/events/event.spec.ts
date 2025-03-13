@@ -21,6 +21,7 @@ describe('Event', () => {
 		authProvider: 'clerk',
 		authProviderId: 'clerk-org-id',
 		totalPoints: 0,
+		avatarUrl: 'https://example.com/avatar.jpg',
 		isOrganizer: true
 	};
 
@@ -84,6 +85,7 @@ describe('Event', () => {
 				contactOrganizer: {
 					id: 123,
 					name: 'Organizer Name',
+					avatarUrl: 'https://example.com/avatar.jpg',
 					email: 'organizer@example.com',
 					totalPoints: 0,
 					isOrganizer: true
