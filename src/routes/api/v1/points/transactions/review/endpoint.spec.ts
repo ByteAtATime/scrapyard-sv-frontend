@@ -62,6 +62,7 @@ describe('POST /api/v1/points/transactions/review', () => {
 		const result = await endpoint_POST({ pointsService, authProvider, body });
 
 		expect(result).toEqual({
+			success: false,
 			error: 'Not authorized',
 			status: 403
 		});
@@ -83,6 +84,7 @@ describe('POST /api/v1/points/transactions/review', () => {
 		const result = await endpoint_POST({ pointsService, authProvider, body });
 
 		expect(result).toEqual({
+			success: false,
 			error: 'User is not authenticated',
 			status: 401
 		});
@@ -103,6 +105,7 @@ describe('POST /api/v1/points/transactions/review', () => {
 		const result = await endpoint_POST({ pointsService, authProvider, body });
 
 		expect(result).toEqual({
+			success: false,
 			error: 'User is not an organizer',
 			status: 401
 		});
@@ -124,6 +127,7 @@ describe('POST /api/v1/points/transactions/review', () => {
 		const result = await endpoint_POST({ pointsService, authProvider, body });
 
 		expect(result).toEqual({
+			success: false,
 			error: 'Transaction with ID 999 not found',
 			status: 404
 		});
@@ -145,29 +149,9 @@ describe('POST /api/v1/points/transactions/review', () => {
 		const result = await endpoint_POST({ pointsService, authProvider, body });
 
 		expect(result).toEqual({
+			success: false,
 			error: 'User 1 cannot review their own transaction',
 			status: 400
-		});
-		expect(authProvider.isOrganizer).toHaveBeenCalled();
-	});
-
-	it('should return 500 when unexpected error occurs', async () => {
-		const pointsService = {
-			reviewTransaction: vi.fn().mockRejectedValue(new Error('Database error'))
-		} as unknown as PointsService;
-		const authProvider = new MockAuthProvider().mockOrganizer();
-		authProvider.getUserId.mockResolvedValue(1);
-
-		const body = {
-			transactionId: 1,
-			status: 'approved' as const
-		};
-
-		const result = await endpoint_POST({ pointsService, authProvider, body });
-
-		expect(result).toEqual({
-			error: 'Internal server error',
-			status: 500
 		});
 		expect(authProvider.isOrganizer).toHaveBeenCalled();
 	});

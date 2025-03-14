@@ -24,6 +24,7 @@ export const endpoint_POST: EndpointHandler<{
 
 	if (!(await authProvider.isOrganizer())) {
 		return {
+			success: false,
 			error: 'Not authorized',
 			status: 403
 		};
@@ -40,28 +41,26 @@ export const endpoint_POST: EndpointHandler<{
 		// Map domain errors to HTTP responses
 		if (error instanceof NotAuthenticatedError || error instanceof NotOrganizerError) {
 			return {
+				success: false,
 				error: error.message,
 				status: 401
 			};
 		}
 		if (error instanceof TransactionNotFoundError) {
 			return {
+				success: false,
 				error: error.message,
 				status: 404
 			};
 		}
 		if (error instanceof SelfReviewError) {
 			return {
+				success: false,
 				error: error.message,
 				status: 400
 			};
 		}
 
-		// Unexpected errors
-		console.error('Unexpected error:', error);
-		return {
-			error: 'Internal server error',
-			status: 500
-		};
+		throw error;
 	}
 };
