@@ -42,11 +42,6 @@
 			return;
 		}
 
-		if (votesLeft > 0) {
-			nextVoteTime = '';
-			return;
-		}
-
 		const now = new Date();
 		const oldestVoteTime = new Date(data.oldestVoteTime);
 		const expiryTime = new Date(oldestVoteTime.getTime() + 60 * 60 * 1000);
@@ -87,20 +82,13 @@
 	<div class="mb-8 space-y-4">
 		<h1 class="text-3xl font-bold">Vote on Scraps</h1>
 		<p class="text-muted-foreground">
-			Choose which scrap you think is more valuable. You'll earn points for voting!
+			Choose which scrap you think is cooler. You'll earn points for voting!
 		</p>
 		<div class="flex items-center justify-between">
 			<p class="text-sm text-muted-foreground">
 				You have {votesLeft}
-				{votesLeft === 1 ? 'vote' : 'votes'} left
-				{#if nextVoteTime && votesLeft === 0}. Next vote in {nextVoteTime}{/if}
+				{votesLeft === 1 ? 'vote' : 'votes'} left{#if nextVoteTime}. Next vote in {nextVoteTime}{/if}
 			</p>
-			<div class="h-2 w-40 rounded-full bg-gray-200">
-				<div
-					class="h-2 rounded-full bg-primary"
-					style="width: {(data.votesInLastHour / data.maxVotesPerHour) * 100}%"
-				></div>
-			</div>
 		</div>
 	</div>
 
