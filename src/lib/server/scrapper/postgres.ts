@@ -17,7 +17,11 @@ import type {
 	VoteData,
 	SessionWithUser,
 	ScrapWithUser,
-	SessionFilters
+	SessionFilters,
+	VoteFilters,
+	VoteWithUser,
+	VoteStats,
+	UserVotingActivity
 } from './types';
 
 const DEFAULT_POINTS_PER_HOUR = 100;
@@ -466,8 +470,9 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 		userId: number;
 		scrapId: number;
 		otherScrapId: number;
+		voterTransactionId?: number;
+		creatorTransactionId?: number;
 	}): Promise<VoteData> {
-		// Only interact with scrapVotesTable here.
 		const [vote] = await db.transaction(async (tx) => {
 			const [vote] = await tx
 				.insert(scrapVotesTable)
@@ -475,7 +480,9 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 					voterId: input.userId,
 					scrapId: input.scrapId,
 					otherScrapId: input.otherScrapId,
-					pointsAwarded: 0 // We'll remove points from here.
+					pointsAwarded: 0,
+					voterTransactionId: input.voterTransactionId,
+					transactionId: input.creatorTransactionId
 				})
 				.returning();
 			return [vote];
@@ -485,9 +492,37 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			id: vote.id,
 			userId: vote.voterId,
 			scrapId: vote.scrapId,
-			otherScrapId: input.otherScrapId, // We'll add this to schema later
-			points: 0, // No points calculated here
-			createdAt: vote.createdAt
+			otherScrapId: input.otherScrapId,
+			points: 0,
+			createdAt: vote.createdAt,
+			voterTransactionId: vote.voterTransactionId || undefined,
+			creatorTransactionId: vote.transactionId || undefined
+		};
+	}
+
+	public async getVoteRecord(voteId: number): Promise<{
+		id: number;
+		voterId: number;
+		scrapId: number;
+		otherScrapId: number;
+		pointsAwarded: number;
+		createdAt: Date;
+		voterTransactionId?: number;
+		creatorTransactionId?: number;
+	} | null> {
+		const [vote] = await db.select().from(scrapVotesTable).where(eq(scrapVotesTable.id, voteId));
+
+		if (!vote) return null;
+
+		return {
+			id: vote.id,
+			voterId: vote.voterId,
+			scrapId: vote.scrapId,
+			otherScrapId: vote.otherScrapId,
+			pointsAwarded: vote.pointsAwarded,
+			createdAt: vote.createdAt,
+			voterTransactionId: vote.voterTransactionId || undefined,
+			creatorTransactionId: vote.transactionId || undefined
 		};
 	}
 
@@ -794,5 +829,266 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 			createdAt: scrap.createdAt,
 			userName: scrap.userName
 		}));
+	}
+
+	public async getVotes(filters: VoteFilters): Promise<VoteWithUser[]> {
+		const { userId, scrapId, startDate, endDate, page = 1, pageSize = 20 } = filters;
+		const offset = (page - 1) * pageSize;
+
+		// First get the filtered votes
+		const voteQuery = db
+			.select({
+				id: scrapVotesTable.id,
+				voterId: scrapVotesTable.voterId,
+				scrapId: scrapVotesTable.scrapId,
+				otherScrapId: scrapVotesTable.otherScrapId,
+				points: scrapVotesTable.pointsAwarded,
+				createdAt: scrapVotesTable.createdAt
+			})
+			.from(scrapVotesTable);
+
+		// Apply filters
+		const conditions = [];
+		if (userId !== undefined) {
+			conditions.push(eq(scrapVotesTable.voterId, userId));
+		}
+		if (scrapId !== undefined) {
+			conditions.push(
+				or(eq(scrapVotesTable.scrapId, scrapId), eq(scrapVotesTable.otherScrapId, scrapId))
+			);
+		}
+		if (startDate) {
+			conditions.push(sql`${scrapVotesTable.createdAt} >= ${startDate.toISOString()}`);
+		}
+		if (endDate) {
+			conditions.push(sql`${scrapVotesTable.createdAt} <= ${endDate.toISOString()}`);
+		}
+
+		if (conditions.length > 0) {
+			voteQuery.where(and(...conditions));
+		}
+
+		// Get the filtered votes with pagination
+		const votes = await voteQuery
+			.orderBy(desc(scrapVotesTable.createdAt))
+			.limit(pageSize)
+			.offset(offset);
+
+		// For each vote, manually fetch the related data
+		const result = await Promise.all(
+			votes.map(async (vote) => {
+				// Get user
+				const [user] = await db
+					.select({
+						name: usersTable.name
+					})
+					.from(usersTable)
+					.where(eq(usersTable.id, vote.voterId));
+
+				// Get scrap
+				const [scrap] = await db
+					.select({
+						title: scrapsTable.title
+					})
+					.from(scrapsTable)
+					.where(eq(scrapsTable.id, vote.scrapId));
+
+				// Get other scrap
+				const [otherScrap] = await db
+					.select({
+						title: scrapsTable.title
+					})
+					.from(scrapsTable)
+					.where(eq(scrapsTable.id, vote.otherScrapId));
+
+				return {
+					id: vote.id,
+					userId: vote.voterId,
+					scrapId: vote.scrapId,
+					otherScrapId: vote.otherScrapId,
+					points: vote.points,
+					createdAt: vote.createdAt,
+					userName: user?.name || 'Unknown User',
+					scrapTitle: scrap?.title || 'Unknown Scrap',
+					otherScrapTitle: otherScrap?.title || 'Unknown Scrap'
+				};
+			})
+		);
+
+		return result;
+	}
+
+	public async getVoteCount(filters: Partial<VoteFilters>): Promise<number> {
+		const { userId, scrapId, startDate, endDate } = filters;
+
+		// Build the query
+		const query = db
+			.select({
+				count: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable);
+
+		// Apply filters
+		const conditions = [];
+		if (userId !== undefined) {
+			conditions.push(eq(scrapVotesTable.voterId, userId));
+		}
+		if (scrapId !== undefined) {
+			conditions.push(
+				or(eq(scrapVotesTable.scrapId, scrapId), eq(scrapVotesTable.otherScrapId, scrapId))
+			);
+		}
+		if (startDate) {
+			conditions.push(sql`${scrapVotesTable.createdAt} >= ${startDate.toISOString()}`);
+		}
+		if (endDate) {
+			conditions.push(sql`${scrapVotesTable.createdAt} <= ${endDate.toISOString()}`);
+		}
+
+		// Apply filters to query
+		const finalQuery = conditions.length > 0 ? query.where(and(...conditions)) : query;
+
+		// Execute the query
+		const [result] = await finalQuery;
+		return result.count;
+	}
+
+	public async getVoteStats(): Promise<VoteStats> {
+		// Get total votes
+		const [totalVotesResult] = await db
+			.select({
+				totalVotes: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable);
+
+		// Get votes in the last hour
+		const lastHour = new Date();
+		lastHour.setHours(lastHour.getHours() - 1);
+		const [lastHourVotesResult] = await db
+			.select({
+				lastHourVotes: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable)
+			.where(sql`${scrapVotesTable.createdAt} >= ${lastHour.toISOString()}`);
+
+		// Get votes in the last 24 hours
+		const last24Hours = new Date();
+		last24Hours.setHours(last24Hours.getHours() - 24);
+		const [last24HourVotesResult] = await db
+			.select({
+				last24HourVotes: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable)
+			.where(sql`${scrapVotesTable.createdAt} >= ${last24Hours.toISOString()}`);
+
+		// Compute average votes per user
+		const userVoteCounts = await db
+			.select({
+				voterId: scrapVotesTable.voterId,
+				voteCount: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable)
+			.groupBy(scrapVotesTable.voterId);
+
+		let averageVotesPerUser = 0;
+		if (userVoteCounts.length > 0) {
+			const totalUserVotes = userVoteCounts.reduce((sum, { voteCount }) => sum + voteCount, 0);
+			averageVotesPerUser = totalUserVotes / userVoteCounts.length;
+		}
+
+		// Get top voters
+		const topVoters = await db
+			.select({
+				userId: scrapVotesTable.voterId,
+				voteCount: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable)
+			.groupBy(scrapVotesTable.voterId)
+			.orderBy(sql`count(*) desc`)
+			.limit(10);
+
+		// Get user names for top voters
+		const topVotersWithNames = await Promise.all(
+			topVoters.map(async (voter) => {
+				const [user] = await db
+					.select({
+						name: usersTable.name
+					})
+					.from(usersTable)
+					.where(eq(usersTable.id, voter.userId));
+
+				return {
+					userId: voter.userId,
+					userName: user?.name || 'Unknown User',
+					voteCount: voter.voteCount
+				};
+			})
+		);
+
+		return {
+			totalVotes: totalVotesResult.totalVotes,
+			lastHourVotes: lastHourVotesResult.lastHourVotes,
+			last24HourVotes: last24HourVotesResult.last24HourVotes,
+			averageVotesPerUser,
+			topVoters: topVotersWithNames
+		};
+	}
+
+	public async getUserVotingActivity(limit = 100): Promise<UserVotingActivity[]> {
+		// Get all users
+		const users = await db
+			.select({
+				id: usersTable.id,
+				name: usersTable.name
+			})
+			.from(usersTable)
+			.limit(limit);
+
+		// For each user, get their voting activity
+		const result = await Promise.all(
+			users.map(async (user) => {
+				// Get total votes for this user
+				const [votesCount] = await db
+					.select({
+						count: sql<number>`count(*)::int`
+					})
+					.from(scrapVotesTable)
+					.where(eq(scrapVotesTable.voterId, user.id));
+
+				// Get the last vote time for this user
+				const [lastVote] = await db
+					.select({
+						createdAt: scrapVotesTable.createdAt
+					})
+					.from(scrapVotesTable)
+					.where(eq(scrapVotesTable.voterId, user.id))
+					.orderBy(desc(scrapVotesTable.createdAt))
+					.limit(1);
+
+				return {
+					userId: user.id,
+					userName: user.name,
+					totalVotes: votesCount.count,
+					lastVoteTime: lastVote?.createdAt || null
+				};
+			})
+		);
+
+		// Sort by total votes (descending)
+		return result.sort((a, b) => b.totalVotes - a.totalVotes);
+	}
+
+	public async invalidateVote(voteId: number): Promise<void> {
+		await db.transaction(async (tx) => {
+			// Get the vote to invalidate
+			const [vote] = await tx.select().from(scrapVotesTable).where(eq(scrapVotesTable.id, voteId));
+
+			if (!vote) {
+				throw new Error(`Vote with ID ${voteId} not found`);
+			}
+
+			// Delete the vote
+			await tx.delete(scrapVotesTable).where(eq(scrapVotesTable.id, voteId));
+		});
 	}
 }

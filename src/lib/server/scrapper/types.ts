@@ -86,12 +86,16 @@ export interface VoteData {
 	otherScrapId: number;
 	points: number;
 	createdAt: Date;
+	voterTransactionId?: number;
+	creatorTransactionId?: number;
 }
 
 export interface CreateVoteInput {
 	userId: number;
 	scrapId: number;
 	otherScrapId: number;
+	voterTransactionId?: number;
+	creatorTransactionId?: number;
 }
 
 export interface SessionWithUser extends SessionData {
@@ -110,14 +114,53 @@ export interface SessionFilters {
 	pageSize?: number;
 }
 
+export interface VoteWithUser extends VoteData {
+	userName: string;
+	scrapTitle: string;
+	otherScrapTitle: string;
+}
+
+export interface VoteFilters {
+	userId?: number;
+	scrapId?: number;
+	startDate?: Date;
+	endDate?: Date;
+	page?: number;
+	pageSize?: number;
+}
+
+export interface VoteStats {
+	totalVotes: number;
+	lastHourVotes: number;
+	last24HourVotes: number;
+	averageVotesPerUser: number;
+	topVoters: { userId: number; userName: string; voteCount: number }[];
+}
+
+export interface UserVotingActivity {
+	userId: number;
+	userName: string;
+	totalVotes: number;
+	lastVoteTime: Date | null;
+}
+
+// Add this interface for the raw vote record from the database
+export interface VoteRecord {
+	id: number;
+	voterId: number;
+	scrapId: number;
+	otherScrapId: number;
+	pointsAwarded: number;
+	createdAt: Date;
+	voterTransactionId?: number;
+	creatorTransactionId?: number;
+}
+
 // Repository Interface
 export interface IScrapperRepo {
-	// Gets only active sessions
+	// Session methods
 	getSession(userId: number): Promise<DBSessionData | null>;
-
-	// Gets any current session (active or paused)
 	getCurrentSession(userId: number): Promise<DBSessionData | null>;
-
 	createSession(userId: number): Promise<DBSessionData>;
 	pauseSession(sessionId: number): Promise<DBSessionData>;
 	resumeSession(sessionId: number): Promise<DBSessionData>;
@@ -125,11 +168,19 @@ export interface IScrapperRepo {
 	cancelSession(sessionId: number): Promise<DBSessionData>;
 	getSessionById(sessionId: number): Promise<DBSessionData | null>;
 	updateSession(id: number, data: Partial<DBSessionData>): Promise<DBSessionData>;
+
+	// Scrap methods
 	createScrap(
 		input: { userId: number; sessionId: number } & Omit<CreateScrapInput, 'userId' | 'sessionId'>
 	): Promise<ScrapData>;
 	getRandomScrapsForVoting(userId: number, limit: number): Promise<[ScrapData, ScrapData]>;
-	createVote(input: { userId: number; scrapId: number; otherScrapId: number }): Promise<VoteData>;
+	createVote(input: {
+		userId: number;
+		scrapId: number;
+		otherScrapId: number;
+		voterTransactionId?: number;
+		creatorTransactionId?: number;
+	}): Promise<VoteData>;
 	updateScrapPoints(scrapId: number, points: number): Promise<ScrapData>;
 	getScrapById(scrapId: number): Promise<ScrapData | null>;
 	getSessionScraps(sessionId: number): Promise<ScrapWithUser[]>;
@@ -145,6 +196,16 @@ export interface IScrapperRepo {
 	getSessions(filters: SessionFilters): Promise<SessionWithUser[]>;
 	getSessionCount(filters: Partial<SessionFilters>): Promise<number>;
 	getTotalPointsForSession(sessionId: number): Promise<number>;
+
+	// Vote methods
+	getVotes(filters: VoteFilters): Promise<VoteWithUser[]>;
+	getVoteCount(filters: Partial<VoteFilters>): Promise<number>;
+	getVoteStats(): Promise<VoteStats>;
+	getUserVotingActivity(limit?: number): Promise<UserVotingActivity[]>;
+	invalidateVote(voteId: number): Promise<void>;
+
+	// Add this method to get a vote record by ID
+	getVoteRecord(voteId: number): Promise<VoteRecord | null>;
 }
 
 // Service Interface
@@ -174,4 +235,11 @@ export interface IScrapperService {
 	getSessions(filters: SessionFilters): Promise<SessionWithUser[]>;
 	getSessionCount(filters: Partial<SessionFilters>): Promise<number>;
 	getTotalPointsForSession(sessionId: number): Promise<number>;
+
+	// Vote methods
+	getVotes(filters: VoteFilters): Promise<VoteWithUser[]>;
+	getVoteCount(filters: Partial<VoteFilters>): Promise<number>;
+	getVoteStats(): Promise<VoteStats>;
+	getUserVotingActivity(limit?: number): Promise<UserVotingActivity[]>;
+	invalidateVote(voteId: number): Promise<void>;
 }

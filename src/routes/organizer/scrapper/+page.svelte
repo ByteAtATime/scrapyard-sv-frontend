@@ -73,8 +73,8 @@
 
 			<Card.Root>
 				<Card.Header>
-					<Card.Title>Total Scraps</Card.Title>
-					<Card.Description>All scraps created today</Card.Description>
+					<Card.Title>Today's Scraps</Card.Title>
+					<Card.Description>Scraps created today</Card.Description>
 				</Card.Header>
 				<Card.Content>
 					<div class="text-3xl font-bold">{data.stats.todayScraps}</div>
@@ -93,7 +93,7 @@
 			<Card.Root>
 				<Card.Header>
 					<Card.Title>Today's Votes</Card.Title>
-					<Card.Description>Votes cast in the last 24 hours</Card.Description>
+					<Card.Description>Votes cast today</Card.Description>
 				</Card.Header>
 				<Card.Content>
 					<div class="text-3xl font-bold">{data.stats.todayVotes}</div>

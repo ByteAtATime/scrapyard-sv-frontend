@@ -8,7 +8,11 @@ import type {
 	VoteData,
 	SessionWithUser,
 	ScrapWithUser,
-	SessionFilters
+	SessionFilters,
+	VoteFilters,
+	VoteWithUser,
+	VoteStats,
+	UserVotingActivity
 } from './types';
 import {
 	CREATOR_POINTS_PER_HOUR_PER_VOTE,
@@ -120,43 +124,45 @@ export class ScrapperService implements IScrapperService {
 	}
 
 	async voteOnScrap(input: CreateVoteInput): Promise<VoteData> {
-		// 1. Create the vote (using the repository - now simplified)
-		const vote = await this.repo.createVote({
-			userId: input.userId,
-			scrapId: input.scrapId,
-			otherScrapId: input.otherScrapId
-		});
-
-		// 2. Get the scrap and session information (using the repository)
+		// 1. Get the scrap and session information (using the repository)
 		const scrap = await this.repo.getScrapById(input.scrapId);
 		if (!scrap) {
-			throw new Error('Scrap not found'); // Or a custom error
+			throw new Error('Scrap not found');
 		}
 		const session = await this.repo.getSessionById(scrap.sessionId);
 		if (!session) {
-			throw new Error('Session not found'); // Or a custom error
+			throw new Error('Session not found');
 		}
 
-		// 3. Calculate points (business logic - could be in a domain object)
+		// 2. Calculate points (business logic - could be in a domain object)
 		const sessionObj = Session.fromDB(session, this.authProvider);
 		const durationHours = sessionObj.getSessionDurationMinutes() / 60;
 		const voterPoints = VOTER_POINTS_PER_VOTE;
 		const creatorPoints = Math.floor(durationHours * CREATOR_POINTS_PER_HOUR_PER_VOTE);
 
-		// 4. Award points to the voter (using the PointsService)
-		await this.pointsService.createTransaction({
+		// 3. Award points to the voter (using the PointsService)
+		const voterTransaction = await this.pointsService.createTransaction({
 			userId: input.userId,
 			amount: voterPoints,
 			reason: `Voted on scrap #${input.scrapId}`,
-			authorId: input.userId // Or a system user ID
+			authorId: input.userId
 		});
 
-		// 5. Award points to the scrap creator (using the PointsService)
-		await this.pointsService.createTransaction({
+		// 4. Award points to the scrap creator (using the PointsService)
+		const creatorTransaction = await this.pointsService.createTransaction({
 			userId: scrap.userId,
 			amount: creatorPoints,
 			reason: `Received vote on scrap #${input.scrapId} (${Math.floor(durationHours)} hours)`,
-			authorId: input.userId // Or a system user ID
+			authorId: input.userId
+		});
+
+		// 5. Create the vote with transaction IDs (using the repository)
+		const vote = await this.repo.createVote({
+			userId: input.userId,
+			scrapId: input.scrapId,
+			otherScrapId: input.otherScrapId,
+			voterTransactionId: voterTransaction.id,
+			creatorTransactionId: creatorTransaction.id
 		});
 
 		return vote;
@@ -253,5 +259,52 @@ export class ScrapperService implements IScrapperService {
 
 	async getSessionScraps(sessionId: number): Promise<ScrapWithUser[]> {
 		return this.repo.getSessionScraps(sessionId);
+	}
+
+	// Vote methods
+	async getVotes(filters: VoteFilters): Promise<VoteWithUser[]> {
+		return this.repo.getVotes(filters);
+	}
+
+	async getVoteCount(filters: Partial<VoteFilters>): Promise<number> {
+		return this.repo.getVoteCount(filters);
+	}
+
+	async getVoteStats(): Promise<VoteStats> {
+		return this.repo.getVoteStats();
+	}
+
+	async getUserVotingActivity(limit?: number): Promise<UserVotingActivity[]> {
+		return this.repo.getUserVotingActivity(limit);
+	}
+
+	async invalidateVote(voteId: number): Promise<void> {
+		// Get the vote record to find associated transactions
+		const voteRecord = await this.repo.getVoteRecord(voteId);
+		if (!voteRecord) {
+			throw new Error(`Vote with ID ${voteId} not found`);
+		}
+
+		// Delete associated transactions if they exist
+		try {
+			if (voteRecord.voterTransactionId) {
+				await this.pointsService.reviewTransaction(voteRecord.voterTransactionId, {
+					reviewerId: (await this.authProvider.getUserId()) || 0,
+					status: 'deleted'
+				});
+			}
+
+			if (voteRecord.creatorTransactionId) {
+				await this.pointsService.reviewTransaction(voteRecord.creatorTransactionId, {
+					reviewerId: (await this.authProvider.getUserId()) || 0,
+					status: 'deleted'
+				});
+			}
+		} catch (error) {
+			console.error('Error deleting transactions:', error);
+		}
+
+		// Delete the vote through the repository
+		await this.repo.invalidateVote(voteId);
 	}
 }
