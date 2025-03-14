@@ -1,9 +1,9 @@
 export const CONFIG = {
 	points: {
-		singular: 'point',
-		plural: 'points',
-		Singular: 'Point',
-		Plural: 'Points',
+		singular: 'bit',
+		plural: 'bits',
+		Singular: 'Bit',
+		Plural: 'Bits',
 		awardVerb: 'Award',
 		earnVerb: 'Earn'
 	}
