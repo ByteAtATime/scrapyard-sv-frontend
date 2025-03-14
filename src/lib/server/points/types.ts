@@ -52,6 +52,7 @@ export interface CreateTransactionData {
 	amount: number;
 	reason: string;
 	authorId: number;
+	status?: TransactionStatus;
 }
 
 export interface ReviewTransactionData {

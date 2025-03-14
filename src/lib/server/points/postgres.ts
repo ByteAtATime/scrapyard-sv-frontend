@@ -93,7 +93,13 @@ export class PostgresPointsRepo implements IPointsRepo {
 
 	async createTransaction(data: CreateTransactionData): Promise<PointTransactionData> {
 		this.logger.info('Creating transaction', { userId: data.userId, amount: data.amount });
-		const [transaction] = await db.insert(pointTransactionsTable).values(data).returning();
+		const [transaction] = await db
+			.insert(pointTransactionsTable)
+			.values({
+				...data,
+				status: data.status || 'pending'
+			})
+			.returning();
 
 		this.logger.debug('Invalidating caches after transaction creation', { userId: data.userId });
 		this.userPointsCache.delete(data.userId);

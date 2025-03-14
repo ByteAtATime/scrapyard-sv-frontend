@@ -140,20 +140,28 @@ export class ScrapperService implements IScrapperService {
 		const voterPoints = VOTER_POINTS_PER_VOTE;
 		const creatorPoints = Math.floor(durationHours * CREATOR_POINTS_PER_HOUR_PER_VOTE);
 
-		// 3. Award points to the voter (using the PointsService)
+		// Get the current user ID to use as reviewer
+		const reviewerId = await this.authProvider.getUserId();
+		if (!reviewerId) {
+			throw new Error('No authenticated user to create transactions');
+		}
+
+		// 3. Award points to the voter (using the PointsService) - create as approved
 		const voterTransaction = await this.pointsService.createTransaction({
 			userId: input.userId,
 			amount: voterPoints,
 			reason: `Voted on scrap #${input.scrapId}`,
-			authorId: input.userId
+			authorId: input.userId,
+			status: 'approved'
 		});
 
-		// 4. Award points to the scrap creator (using the PointsService)
+		// 4. Award points to the scrap creator (using the PointsService) - create as approved
 		const creatorTransaction = await this.pointsService.createTransaction({
 			userId: scrap.userId,
 			amount: creatorPoints,
 			reason: `Received vote on scrap #${input.scrapId} (${Math.floor(durationHours)} hours)`,
-			authorId: input.userId
+			authorId: input.userId,
+			status: 'approved'
 		});
 
 		// 5. Create the vote with transaction IDs (using the repository)
