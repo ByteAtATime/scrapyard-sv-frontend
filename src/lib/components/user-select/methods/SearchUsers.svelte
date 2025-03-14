@@ -89,6 +89,9 @@
 				<CommandItem onSelect={() => onSelect(user)}>
 					<div class="flex items-center gap-2">
 						<Avatar.Root class="size-8">
+							{#if user.avatarUrl}
+								<Avatar.Image src={user.avatarUrl} alt={user.name} />
+							{/if}
 							<Avatar.Fallback>
 								<UserIcon class="size-5 text-muted-foreground" />
 							</Avatar.Fallback>

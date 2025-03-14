@@ -14,6 +14,9 @@
 <div class="container max-w-3xl py-8">
 	<div class="flex items-center gap-4">
 		<Avatar.Root class="h-24 w-24 text-4xl">
+			{#if user?.avatarUrl}
+				<Avatar.Image src={user.avatarUrl} alt={user.name} />
+			{/if}
 			<Avatar.Fallback>{user?.name?.[0]?.toUpperCase()}</Avatar.Fallback>
 		</Avatar.Root>
 		<div class="flex-1">
