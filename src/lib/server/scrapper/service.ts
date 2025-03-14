@@ -278,6 +278,14 @@ export class ScrapperService implements IScrapperService {
 		return this.repo.getUserVotingActivity(limit);
 	}
 
+	async getUserVotesInLastHour(userId: number): Promise<number> {
+		return this.repo.getUserVotesInLastHour(userId);
+	}
+
+	async getOldestVoteTimeInLastHour(userId: number): Promise<Date | null> {
+		return this.repo.getOldestVoteTimeInLastHour(userId);
+	}
+
 	async invalidateVote(voteId: number): Promise<void> {
 		// Get the vote record to find associated transactions
 		const voteRecord = await this.repo.getVoteRecord(voteId);

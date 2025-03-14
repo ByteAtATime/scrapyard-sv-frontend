@@ -12,7 +12,6 @@
 		onResult: ({ result }) => {
 			if (result.type === 'success') {
 				toast.success('Vote submitted successfully');
-				// Refresh the page to get new scraps
 				window.location.reload();
 			} else {
 				toast.error('Failed to submit vote', {
@@ -31,6 +30,57 @@
 			toast.error(noScrapsWarning);
 		}
 	});
+
+	let votesLeft = $derived(Math.max(0, data.maxVotesPerHour - data.votesInLastHour));
+
+	let nextVoteTime = $state('');
+	let timerInterval = $state<ReturnType<typeof setInterval> | null>(null);
+
+	function updateNextVoteTime() {
+		if (data.votesInLastHour <= 0 || !data.oldestVoteTime) {
+			nextVoteTime = '';
+			return;
+		}
+
+		if (votesLeft > 0) {
+			nextVoteTime = '';
+			return;
+		}
+
+		const now = new Date();
+		const oldestVoteTime = new Date(data.oldestVoteTime);
+		const expiryTime = new Date(oldestVoteTime.getTime() + 60 * 60 * 1000);
+
+		const timeUntilNextVote = expiryTime.getTime() - now.getTime();
+
+		if (timeUntilNextVote <= 0) {
+			nextVoteTime = 'now';
+			return;
+		}
+
+		const minutes = Math.floor(timeUntilNextVote / (60 * 1000));
+		const seconds = Math.floor((timeUntilNextVote % (60 * 1000)) / 1000);
+
+		nextVoteTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+	}
+
+	$effect(() => {
+		updateNextVoteTime();
+
+		if (timerInterval) {
+			clearInterval(timerInterval);
+		}
+
+		if (votesLeft === 0 && data.oldestVoteTime) {
+			timerInterval = setInterval(updateNextVoteTime, 1000);
+		}
+
+		return () => {
+			if (timerInterval) {
+				clearInterval(timerInterval);
+			}
+		};
+	});
 </script>
 
 <div class="container mx-auto py-8">
@@ -39,9 +89,34 @@
 		<p class="text-muted-foreground">
 			Choose which scrap you think is more valuable. You'll earn points for voting!
 		</p>
+		<div class="flex items-center justify-between">
+			<p class="text-sm text-muted-foreground">
+				You have {votesLeft}
+				{votesLeft === 1 ? 'vote' : 'votes'} left
+				{#if nextVoteTime && votesLeft === 0}. Next vote in {nextVoteTime}{/if}
+			</p>
+			<div class="h-2 w-40 rounded-full bg-gray-200">
+				<div
+					class="h-2 rounded-full bg-primary"
+					style="width: {(data.votesInLastHour / data.maxVotesPerHour) * 100}%"
+				></div>
+			</div>
+		</div>
 	</div>
 
-	{#if data.scraps && data.scraps.length >= 2}
+	{#if data.votesInLastHour >= data.maxVotesPerHour}
+		<Card.Root>
+			<Card.Header class="mb-6">
+				<Card.Title>Vote limit reached</Card.Title>
+				<Card.Description>
+					You have reached the maximum of {data.maxVotesPerHour} votes per hour.
+					{#if nextVoteTime}
+						Next vote available in {nextVoteTime}.
+					{/if}
+				</Card.Description>
+			</Card.Header>
+		</Card.Root>
+	{:else if data.scraps && data.scraps.length >= 2}
 		<div class="grid gap-8 md:grid-cols-2">
 			{#each data.scraps as scrap (scrap.id)}
 				<form method="POST" action="?/vote" use:enhance>

@@ -1,4 +1,4 @@
-import { and, eq, or, sql, not, exists, desc, ne } from 'drizzle-orm';
+import { and, eq, or, sql, not, exists, desc, ne, gt } from 'drizzle-orm';
 import { db } from '../db';
 import {
 	scrapperSessionsTable,
@@ -1076,6 +1076,34 @@ export class PostgresScrapperRepo implements IScrapperRepo {
 
 		// Sort by total votes (descending)
 		return result.sort((a, b) => b.totalVotes - a.totalVotes);
+	}
+
+	public async getUserVotesInLastHour(userId: number): Promise<number> {
+		const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+		const [result] = await db
+			.select({
+				count: sql<number>`count(*)::int`
+			})
+			.from(scrapVotesTable)
+			.where(and(eq(scrapVotesTable.voterId, userId), gt(scrapVotesTable.createdAt, oneHourAgo)));
+
+		return result.count;
+	}
+
+	public async getOldestVoteTimeInLastHour(userId: number): Promise<Date | null> {
+		const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+		const [oldestVote] = await db
+			.select({
+				createdAt: scrapVotesTable.createdAt
+			})
+			.from(scrapVotesTable)
+			.where(and(eq(scrapVotesTable.voterId, userId), gt(scrapVotesTable.createdAt, oneHourAgo)))
+			.orderBy(scrapVotesTable.createdAt)
+			.limit(1);
+
+		return oldestVote ? oldestVote.createdAt : null;
 	}
 
 	public async invalidateVote(voteId: number): Promise<void> {

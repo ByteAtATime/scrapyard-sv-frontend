@@ -15,6 +15,7 @@ import { superValidate } from 'sveltekit-superforms/server';
 import { voteSchema } from '../scrapper/schema';
 import { zod } from 'sveltekit-superforms/adapters';
 import type { ScrapData } from '$lib/server/scrapper';
+import { MAX_VOTES_PER_HOUR } from '$lib/server/scrapper/types';
 
 const voteHandler: PageHandler<
 	WithAuthProvider & WithScrapperService & WithSuperForm<typeof voteSchema>
@@ -25,6 +26,14 @@ const voteHandler: PageHandler<
 	}
 
 	try {
+		const votesInLastHour = await scrapperService.getUserVotesInLastHour(userId);
+		if (votesInLastHour >= MAX_VOTES_PER_HOUR) {
+			return fail(429, {
+				form,
+				error: `You have reached the maximum of ${MAX_VOTES_PER_HOUR} votes per hour. Please try again later.`
+			});
+		}
+
 		const vote = await scrapperService.voteOnScrap({
 			userId: userId,
 			scrapId: form.data.scrapId,
@@ -51,9 +60,15 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 	if (!userId) {
 		return {
 			scraps: [],
-			voteForm: emptyForm
+			voteForm: emptyForm,
+			votesInLastHour: 0,
+			maxVotesPerHour: MAX_VOTES_PER_HOUR,
+			oldestVoteTime: null
 		};
 	}
+
+	const votesInLastHour = await scrapperService.getUserVotesInLastHour(userId);
+	const oldestVoteTime = await scrapperService.getOldestVoteTimeInLastHour(userId);
 
 	let scraps: ScrapData[] = [];
 
@@ -63,7 +78,10 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 		console.error(error);
 		return {
 			scraps: [],
-			voteForm: emptyForm
+			voteForm: emptyForm,
+			votesInLastHour,
+			maxVotesPerHour: MAX_VOTES_PER_HOUR,
+			oldestVoteTime
 		};
 	}
 
@@ -77,7 +95,10 @@ const loadHandler: PageHandler<WithAuthProvider & WithScrapperService> = async (
 
 	return {
 		scraps,
-		voteForm: form
+		voteForm: form,
+		votesInLastHour,
+		maxVotesPerHour: MAX_VOTES_PER_HOUR,
+		oldestVoteTime
 	};
 };
 

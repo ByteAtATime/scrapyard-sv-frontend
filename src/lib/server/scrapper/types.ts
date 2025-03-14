@@ -8,6 +8,7 @@ export const BASE_POINTS_PER_HOUR = 100;
 export const POINTS_PER_VOTE = 1;
 export const VOTER_POINTS = 1;
 export const CREATOR_POINTS_PER_HOUR_PER_VOTE = 1;
+export const MAX_VOTES_PER_HOUR = 5;
 
 // Domain Errors
 export class ScrapperError extends Error {
@@ -202,6 +203,8 @@ export interface IScrapperRepo {
 	getVoteCount(filters: Partial<VoteFilters>): Promise<number>;
 	getVoteStats(): Promise<VoteStats>;
 	getUserVotingActivity(limit?: number): Promise<UserVotingActivity[]>;
+	getUserVotesInLastHour(userId: number): Promise<number>;
+	getOldestVoteTimeInLastHour(userId: number): Promise<Date | null>;
 	invalidateVote(voteId: number): Promise<void>;
 
 	// Add this method to get a vote record by ID
@@ -241,5 +244,7 @@ export interface IScrapperService {
 	getVoteCount(filters: Partial<VoteFilters>): Promise<number>;
 	getVoteStats(): Promise<VoteStats>;
 	getUserVotingActivity(limit?: number): Promise<UserVotingActivity[]>;
+	getUserVotesInLastHour(userId: number): Promise<number>;
+	getOldestVoteTimeInLastHour(userId: number): Promise<Date | null>;
 	invalidateVote(voteId: number): Promise<void>;
 }
