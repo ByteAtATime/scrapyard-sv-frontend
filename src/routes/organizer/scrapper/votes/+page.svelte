@@ -90,7 +90,7 @@
 			<h1 class="text-3xl font-bold">Vote Management</h1>
 			<p class="text-muted-foreground">Monitor and manage voting activity</p>
 		</div>
-		<Button onclick={() => goto('/organizer/scrapper')}>Back to Dashboard</Button>
+		<Button href="/organizer/scrapper">Back to Dashboard</Button>
 	</div>
 
 	{#if !data || !data.voteStats}

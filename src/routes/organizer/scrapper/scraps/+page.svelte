@@ -116,11 +116,7 @@
 								<Table.Cell>{formatDate(scrap.createdAt)}</Table.Cell>
 								<Table.Cell>{scrap.points}</Table.Cell>
 								<Table.Cell>
-									<Button
-										variant="ghost"
-										size="icon"
-										onclick={() => goto(`/organizer/scrapper/scraps/${scrap.id}`)}
-									>
+									<Button variant="ghost" size="icon" href="/organizer/scrapper/scraps/{scrap.id}">
 										<ChevronRight class="h-4 w-4" />
 									</Button>
 								</Table.Cell>

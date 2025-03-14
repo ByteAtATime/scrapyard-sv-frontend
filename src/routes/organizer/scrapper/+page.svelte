@@ -4,7 +4,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Badge } from '$lib/components/ui/badge';
 	import { ChevronRight } from 'lucide-svelte';
-	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -61,11 +60,7 @@
 					<div class="text-3xl font-bold">{data.stats.activeSessions}</div>
 				</Card.Content>
 				<Card.Footer>
-					<Button
-						variant="outline"
-						class="w-full"
-						onclick={() => goto('/organizer/scrapper/sessions')}
-					>
+					<Button variant="outline" class="w-full" href="/organizer/scrapper/sessions">
 						View Sessions
 					</Button>
 				</Card.Footer>
@@ -80,11 +75,7 @@
 					<div class="text-3xl font-bold">{data.stats.todayScraps}</div>
 				</Card.Content>
 				<Card.Footer>
-					<Button
-						variant="outline"
-						class="w-full"
-						onclick={() => goto('/organizer/scrapper/scraps')}
-					>
+					<Button variant="outline" class="w-full" href="/organizer/scrapper/scraps">
 						View Scraps
 					</Button>
 				</Card.Footer>
@@ -99,11 +90,7 @@
 					<div class="text-3xl font-bold">{data.stats.todayVotes}</div>
 				</Card.Content>
 				<Card.Footer>
-					<Button
-						variant="outline"
-						class="w-full"
-						onclick={() => goto('/organizer/scrapper/votes')}
-					>
+					<Button variant="outline" class="w-full" href="/organizer/scrapper/votes">
 						View Votes
 					</Button>
 				</Card.Footer>
@@ -145,7 +132,7 @@
 											<Button
 												variant="ghost"
 												size="icon"
-												onclick={() => goto(`/organizer/scrapper/sessions/${session.id}`)}
+												href="/organizer/scrapper/sessions/{session.id}"
 											>
 												<ChevronRight class="h-4 w-4" />
 											</Button>
@@ -188,7 +175,7 @@
 											<Button
 												variant="ghost"
 												size="icon"
-												onclick={() => goto(`/organizer/scrapper/scraps/${scrap.id}`)}
+												href="/organizer/scrapper/scraps/{scrap.id}"
 											>
 												<ChevronRight class="h-4 w-4" />
 											</Button>

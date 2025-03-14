@@ -3,7 +3,6 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { ChevronLeft } from 'lucide-svelte';
-	import { goto } from '$app/navigation';
 
 	let { data } = $props();
 
@@ -28,7 +27,7 @@
 	<div class="container mx-auto space-y-8 py-8">
 		<!-- Header -->
 		<div class="flex items-center gap-4">
-			<Button variant="ghost" size="icon" onclick={() => goto('/organizer/scrapper/scraps')}>
+			<Button variant="ghost" size="icon" href="/organizer/scrapper/scraps">
 				<ChevronLeft class="h-4 w-4" />
 			</Button>
 			<div>
@@ -121,10 +120,7 @@
 							</div>
 						{/if}
 						<div class="pt-2">
-							<Button
-								variant="outline"
-								onclick={() => goto(`/organizer/scrapper/sessions/${data.session.id}`)}
-							>
+							<Button variant="outline" href="/organizer/scrapper/sessions/{data.session.id}">
 								View Session Details
 							</Button>
 						</div>

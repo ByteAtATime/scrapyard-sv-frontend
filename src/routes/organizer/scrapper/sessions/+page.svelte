@@ -240,7 +240,7 @@
 									<Button
 										variant="ghost"
 										size="icon"
-										onclick={() => goto(`/organizer/scrapper/sessions/${session.id}`)}
+										href="/organizer/scrapper/sessions/{session.id}"
 									>
 										<ChevronRight class="h-4 w-4" />
 									</Button>
