@@ -11,18 +11,25 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const authProvider = new ClerkAuthProvider(locals.auth);
 
 	const pointsService = new PointsService(pointRepo, authProvider);
-	const transactions = await pointsService.getTransactions();
+	const transactionsData = await pointsService.getTransactions();
 
 	const approveForm = await superValidate(zod(approveSchema));
 	const rejectForm = await superValidate(zod(rejectSchema));
 	const deleteForm = await superValidate(zod(deleteSchema));
 
-	const transactionsJson = await Promise.allSettled(transactions.map((t) => t.toJson()));
+	const transactionsJson = await Promise.allSettled(transactionsData.map((t) => t.toJson()));
+	const transactions = transactionsJson
+		.map((t) => (t.status === 'fulfilled' ? t.value : null))
+		.filter((t) => !!t);
+
+	const sortedTransactions = transactions.sort((a, b) => {
+		if (a.status === 'pending' && b.status !== 'pending') return -1;
+		if (a.status !== 'pending' && b.status === 'pending') return 1;
+		return b.createdAt.getTime() - a.createdAt.getTime();
+	});
 
 	return {
-		transactions: transactionsJson
-			.map((t) => (t.status === 'fulfilled' ? t.value : null))
-			.filter((t) => !!t),
+		transactions: sortedTransactions,
 		approveForm,
 		rejectForm,
 		deleteForm
