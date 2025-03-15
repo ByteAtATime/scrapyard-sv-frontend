@@ -53,9 +53,10 @@
 
 	type Props = {
 		isOrganizer?: boolean;
+		hasActiveQuests?: boolean;
 	};
 
-	let { isOrganizer }: Props = $props();
+	let { isOrganizer, hasActiveQuests }: Props = $props();
 </script>
 
 <Sidebar.Root collapsible="icon" variant="inset">
@@ -81,6 +82,11 @@
 									</a>
 								{/snippet}
 							</Sidebar.MenuButton>
+							{#if item.title === 'Quests' && hasActiveQuests}
+								<Sidebar.MenuBadge class="bg-destructive text-destructive-foreground"
+									>NEW</Sidebar.MenuBadge
+								>
+							{/if}
 						</Sidebar.MenuItem>
 					{/each}
 				</Sidebar.Menu>
