@@ -5,7 +5,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import { Coins, Pencil, Trash2 } from 'lucide-svelte';
+	import { Coins, Pencil, Trash2, Upload } from 'lucide-svelte';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { CONFIG } from '$lib/config';
@@ -41,6 +41,15 @@
 	let isCreateDialogOpen = $state(false);
 	let isEditDialogOpen = $state(false);
 	let isDeleteDialogOpen = $state(false);
+	
+	// File upload states
+	let createFileInput = $state<HTMLInputElement | null>(null);
+	let editFileInput = $state<HTMLInputElement | null>(null);
+	let createImageFile = $state<File | null>(null);
+	let editImageFile = $state<File | null>(null);
+	let createImagePreview = $state<string | null>(null);
+	let editImagePreview = $state<string | null>(null);
+	let isUploading = $state(false);
 
 	function onEditClick(item: (typeof items)[number]) {
 		console.log(JSON.stringify(item, null, 2));
@@ -54,6 +63,7 @@
 			stock: item.stock,
 			isOrderable: item.isOrderable
 		};
+		editImagePreview = item.imageUrl;
 		isEditDialogOpen = true;
 	}
 
@@ -62,11 +72,87 @@
 		$deleteForm = { id: item.id };
 		isDeleteDialogOpen = true;
 	}
+	
+	async function uploadImage(file: File): Promise<string> {
+		isUploading = true;
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
+			
+			const response = await fetch('https://hack.ngo/upload', {
+				method: 'POST',
+				body: formData
+			});
+			
+			if (!response.ok) {
+				throw new Error('Failed to upload image');
+			}
+			
+			const data = await response.json();
+			return data.url;
+		} catch (error) {
+			console.error('Error uploading image:', error);
+			throw error;
+		} finally {
+			isUploading = false;
+		}
+	}
+	
+	function handleCreateFileChange(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (input.files && input.files.length > 0) {
+			createImageFile = input.files[0];
+			createImagePreview = URL.createObjectURL(createImageFile);
+		}
+	}
+	
+	function handleEditFileChange(event: Event) {
+		const input = event.target as HTMLInputElement;
+		if (input.files && input.files.length > 0) {
+			editImageFile = input.files[0];
+			editImagePreview = URL.createObjectURL(editImageFile);
+		}
+	}
+	
+	async function handleCreateSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		
+		if (createImageFile) {
+			try {
+				const imageUrl = await uploadImage(createImageFile);
+				$createForm.imageUrl = imageUrl;
+			} catch (error) {
+				return;
+			}
+		}
+		
+		const form = event.target as HTMLFormElement;
+		form.submit();
+	}
+	
+	async function handleEditSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		
+		if (editImageFile) {
+			try {
+				const imageUrl = await uploadImage(editImageFile);
+				$editForm.imageUrl = imageUrl;
+			} catch (error) {
+				return;
+			}
+		}
+		
+		const form = event.target as HTMLFormElement;
+		form.submit();
+	}
 
 	$effect(() => {
 		if ($createMessage?.type === 'success') {
 			isCreateDialogOpen = false;
 			resetCreate();
+			createImageFile = null;
+			createImagePreview = null;
+			if (createFileInput) createFileInput.value = '';
 		}
 	});
 
@@ -74,6 +160,9 @@
 		if ($editMessage?.type === 'success') {
 			isEditDialogOpen = false;
 			resetEdit();
+			editImageFile = null;
+			editImagePreview = null;
+			if (editFileInput) editFileInput.value = '';
 		}
 	});
 
@@ -154,7 +243,7 @@
 		<Dialog.Header>
 			<Dialog.Title>Add Shop Item</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/create" use:createEnhance class="space-y-4">
+		<form method="POST" action="?/create" use:createEnhance onsubmit={handleCreateSubmit} class="space-y-4">
 			<div class="space-y-2">
 				<Label for="name">Name</Label>
 				<Input
@@ -186,20 +275,50 @@
 				{/if}
 			</div>
 			<div class="space-y-2">
-				<Label for="imageUrl">Image URL</Label>
-				<Input
-					id="imageUrl"
-					name="imageUrl"
-					type="url"
-					{...$createConstraints.imageUrl}
-					bind:value={$createForm.imageUrl}
-					aria-invalid={$createErrors.imageUrl ? 'true' : undefined}
-				/>
-				{#if $createErrors.imageUrl}
-					<span class="text-sm text-destructive">
-						{$createErrors.imageUrl[0]}
-					</span>
-				{/if}
+				<Label for="image">Image</Label>
+				<div class="grid gap-4">
+					<div class="flex items-center gap-2">
+						<Input
+							id="imageFile"
+							name="imageFile"
+							type="file"
+							accept="image/*"
+							bind:this={createFileInput}
+							onchange={handleCreateFileChange}
+						/>
+						{#if isUploading}
+							<div class="animate-spin">
+								<Upload size={20} />
+							</div>
+						{/if}
+					</div>
+					{#if createImagePreview}
+						<div class="relative aspect-video w-full overflow-hidden rounded-md">
+							<img
+								src={createImagePreview}
+								alt="Preview"
+								class="h-full w-full object-cover"
+							/>
+						</div>
+					{/if}
+					<div class="flex items-center">
+						<span class="text-sm text-muted-foreground">Or provide an image URL:</span>
+					</div>
+					<Input
+						id="imageUrl"
+						name="imageUrl"
+						type="url"
+						{...$createConstraints.imageUrl}
+						bind:value={$createForm.imageUrl}
+						aria-invalid={$createErrors.imageUrl ? 'true' : undefined}
+						placeholder="https://example.com/image.jpg"
+					/>
+					{#if $createErrors.imageUrl}
+						<span class="text-sm text-destructive">
+							{$createErrors.imageUrl[0]}
+						</span>
+					{/if}
+				</div>
 			</div>
 			<div class="space-y-2">
 				<Label for="price">Price ({CONFIG.points.plural})</Label>
@@ -254,7 +373,7 @@
 		<Dialog.Header>
 			<Dialog.Title>Edit Shop Item</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/update" use:editEnhance class="space-y-4">
+		<form method="POST" action="?/update" use:editEnhance onsubmit={handleEditSubmit} class="space-y-4">
 			<input type="hidden" name="id" bind:value={$editForm.id} />
 			<div class="space-y-2">
 				<Label for="edit-name">Name</Label>
@@ -285,18 +404,48 @@
 				{/if}
 			</div>
 			<div class="space-y-2">
-				<Label for="edit-imageUrl">Image URL</Label>
-				<Input
-					id="edit-imageUrl"
-					name="imageUrl"
-					type="url"
-					{...$editConstraints.imageUrl}
-					bind:value={$editForm.imageUrl}
-					aria-invalid={$editErrors.imageUrl ? 'true' : undefined}
-				/>
-				{#if $editErrors.imageUrl}
-					<span class="text-sm text-destructive">{$editErrors.imageUrl[0]}</span>
-				{/if}
+				<Label for="edit-image">Image</Label>
+				<div class="grid gap-4">
+					<div class="flex items-center gap-2">
+						<Input
+							id="edit-imageFile"
+							name="imageFile"
+							type="file"
+							accept="image/*"
+							bind:this={editFileInput}
+							onchange={handleEditFileChange}
+						/>
+						{#if isUploading}
+							<div class="animate-spin">
+								<Upload size={20} />
+							</div>
+						{/if}
+					</div>
+					{#if editImagePreview}
+						<div class="relative aspect-video w-full overflow-hidden rounded-md">
+							<img
+								src={editImagePreview}
+								alt="Preview"
+								class="h-full w-full object-cover"
+							/>
+						</div>
+					{/if}
+					<div class="flex items-center">
+						<span class="text-sm text-muted-foreground">Or provide an image URL:</span>
+					</div>
+					<Input
+						id="edit-imageUrl"
+						name="imageUrl"
+						type="url"
+						{...$editConstraints.imageUrl}
+						bind:value={$editForm.imageUrl}
+						aria-invalid={$editErrors.imageUrl ? 'true' : undefined}
+						placeholder="https://example.com/image.jpg"
+					/>
+					{#if $editErrors.imageUrl}
+						<span class="text-sm text-destructive">{$editErrors.imageUrl[0]}</span>
+					{/if}
+				</div>
 			</div>
 			<div class="space-y-2">
 				<Label for="edit-price">Price ({CONFIG.points.plural})</Label>

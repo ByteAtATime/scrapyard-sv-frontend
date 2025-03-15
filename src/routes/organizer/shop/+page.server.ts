@@ -37,7 +37,17 @@ export const actions = {
 			return fail(400, { form });
 		}
 
-		await shopService.createItem(form.data);
+		if (!form.data.imageUrl) {
+			form.errors.imageUrl = ['Image URL is required'];
+			return fail(400, { form });
+		}
+
+		const formData = {
+			...form.data,
+			imageUrl: form.data.imageUrl
+		};
+
+		await shopService.createItem(formData);
 
 		return message(form, 'Item created successfully.');
 	},
@@ -53,9 +63,19 @@ export const actions = {
 			return fail(400, { form });
 		}
 
+		if (!form.data.imageUrl) {
+			form.errors.imageUrl = ['Image URL is required'];
+			return fail(400, { form });
+		}
+
 		const { id, ...data } = form.data;
 
-		await shopService.updateItem(id, data);
+		const updateData = {
+			...data,
+			imageUrl: data.imageUrl
+		};
+
+		await shopService.updateItem(id, updateData);
 
 		return message(form, 'Item updated successfully.');
 	},
