@@ -48,9 +48,9 @@
 							</span>
 						{/if}
 						{#if user.totalPoints}
-						<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
-							{user.totalPoints}
-							{CONFIG.points.plural}
+							<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
+								{user.totalPoints}
+								{CONFIG.points.plural}
 							</span>
 						{/if}
 						{#if user.isOrganizer}

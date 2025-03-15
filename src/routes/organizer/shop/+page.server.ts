@@ -47,6 +47,8 @@ export const actions = {
 			imageUrl: form.data.imageUrl
 		};
 
+		console.log(formData, 'creating');
+
 		await shopService.createItem(formData);
 
 		return message(form, 'Item created successfully.');

@@ -80,7 +80,7 @@ export class PostgresQuestRepo implements IQuestRepo {
 		const submissionData = {
 			...data,
 			attachmentUrls: JSON.stringify(data.attachmentUrls),
-			status: 'pending'
+			status: 'pending' as const
 		};
 
 		const [submission] = await db.insert(questSubmissionsTable).values(submissionData).returning();

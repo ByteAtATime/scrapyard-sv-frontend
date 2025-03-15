@@ -4,15 +4,11 @@
 		Card,
 		CardContent,
 		CardDescription,
-		CardFooter,
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { superForm, type SuperValidated } from 'sveltekit-superforms/client';
-	import { toast } from 'svelte-sonner';
-	import { Loader2, FilePlus, X, Clock, Award } from 'lucide-svelte';
+	import { type SuperValidated } from 'sveltekit-superforms/client';
+	import { Clock, Award, ClipboardList } from 'lucide-svelte';
 	import type { QuestData } from '$lib/server/db/types';
 	import type { z } from 'zod';
 	import type { questSubmissionSchema } from './schema';
@@ -54,7 +50,17 @@
 </script>
 
 <div class="container mx-auto py-8">
-	<h1 class="mb-6 text-3xl font-bold">Quests</h1>
+	<div class="mb-6 flex items-center justify-between">
+		<h1 class="text-3xl font-bold">Quests</h1>
+		{#if data.teams.length > 0}
+			<a href={`/quests/submissions/${data.teams[0].id}`}>
+				<Button variant="outline" class="flex items-center gap-2">
+					<ClipboardList class="h-4 w-4" />
+					View Team Submissions
+				</Button>
+			</a>
+		{/if}
+	</div>
 
 	{#if data.quests.length === 0}
 		<div class="rounded-lg border border-dashed p-8 text-center">

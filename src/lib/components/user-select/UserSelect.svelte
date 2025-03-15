@@ -95,7 +95,7 @@
 					</Button>
 				{/snippet}
 			</Dialog.Trigger>
-			<Dialog.Content class="sm:max-w-[425px] max-h-[80vh]">
+			<Dialog.Content class="max-h-[80vh] sm:max-w-[425px]">
 				<Dialog.Header>
 					<Dialog.Title>Select User</Dialog.Title>
 				</Dialog.Header>

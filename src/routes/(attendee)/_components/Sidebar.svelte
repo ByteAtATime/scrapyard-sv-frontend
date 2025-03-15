@@ -9,7 +9,8 @@
 		UserRoundCog,
 		Users,
 		Code,
-		Vote
+		Vote,
+		Scroll
 	} from 'lucide-svelte';
 
 	const items = [
@@ -22,6 +23,11 @@
 			title: 'Teams',
 			url: '/teams',
 			icon: Users
+		},
+		{
+			title: 'Quests',
+			url: '/quests',
+			icon: Scroll
 		},
 		{
 			title: 'Shop',

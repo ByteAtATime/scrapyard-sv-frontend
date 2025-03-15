@@ -1,11 +1,12 @@
 import { error } from '@sveltejs/kit';
-import { composePage, type PageHandler } from '$lib/server/endpoints';
+import { composePage, withRouteParams, type PageHandler } from '$lib/server/endpoints';
 import {
 	withAuthProvider,
 	withQuestService,
 	type WithAuthProvider,
 	type WithQuestService
 } from '$lib/server/endpoints/dependencies';
+import { z } from 'zod';
 
 interface Params {
 	id: string;
@@ -51,4 +52,12 @@ const loadHandler: PageHandler<WithAuthProvider & WithQuestService & { params: P
 	}
 };
 
-export const load = composePage(withAuthProvider(), withQuestService())(loadHandler);
+const routeSchema = z.object({
+	id: z.string()
+});
+
+export const load = composePage(
+	withAuthProvider(),
+	withQuestService(),
+	withRouteParams(routeSchema)
+)(loadHandler);

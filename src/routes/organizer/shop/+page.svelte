@@ -20,7 +20,7 @@
 		reset: resetCreate,
 		message: createMessage,
 		constraints: createConstraints
-	} = $derived.by(() => superForm(data.createForm));
+	} = superForm(data.createForm);
 
 	const {
 		form: editForm,
@@ -29,24 +29,22 @@
 		reset: resetEdit,
 		message: editMessage,
 		constraints: editConstraints
-	} = $derived.by(() => superForm(data.editForm));
+	} = superForm(data.editForm);
 
 	const {
 		form: deleteForm,
 		enhance: deleteEnhance,
+		reset: resetDelete,
 		message: deleteMessage
-	} = $derived.by(() => superForm(data.deleteForm));
+	} = superForm(data.deleteForm);
 
-	let editingItem = $state<(typeof items)[number] | null>(null);
+	// Define message type
+	type SuperformsMessage = { type: 'error' | 'success'; text: string };
+
 	let isCreateDialogOpen = $state(false);
 	let isEditDialogOpen = $state(false);
 	let isDeleteDialogOpen = $state(false);
-	
-	// File upload states
-	let createFileInput = $state<HTMLInputElement | null>(null);
-	let editFileInput = $state<HTMLInputElement | null>(null);
-	let createImageFile = $state<File | null>(null);
-	let editImageFile = $state<File | null>(null);
+	let editingItem = $state<(typeof items)[number] | null>(null);
 	let createImagePreview = $state<string | null>(null);
 	let editImagePreview = $state<string | null>(null);
 	let isUploading = $state(false);
@@ -68,107 +66,94 @@
 	}
 
 	function onDeleteClick(item: (typeof items)[number]) {
-		editingItem = item;
-		$deleteForm = { id: item.id };
+		$deleteForm.id = item.id;
 		isDeleteDialogOpen = true;
 	}
-	
+
 	async function uploadImage(file: File): Promise<string> {
 		isUploading = true;
 		try {
 			const formData = new FormData();
 			formData.append('file', file);
-			
+
 			const response = await fetch('https://hack.ngo/upload', {
 				method: 'POST',
 				body: formData
 			});
-			
+
 			if (!response.ok) {
 				throw new Error('Failed to upload image');
 			}
-			
+
 			const data = await response.json();
 			return data.url;
-		} catch (error) {
-			console.error('Error uploading image:', error);
-			throw error;
 		} finally {
 			isUploading = false;
 		}
 	}
-	
+
+	async function handleCreateImageUpload(event: Event) {
+		event.preventDefault();
+
+		const fileInput = event.target as HTMLInputElement;
+		if (fileInput.files && fileInput.files.length > 0) {
+			try {
+				const imageUrl = await uploadImage(fileInput.files[0]);
+				$createForm.imageUrl = imageUrl;
+			} catch (error) {
+				console.error('Error uploading image:', error);
+			}
+		}
+	}
+
+	async function handleEditImageUpload(event: Event) {
+		event.preventDefault();
+
+		const fileInput = event.target as HTMLInputElement;
+		if (fileInput.files && fileInput.files.length > 0) {
+			try {
+				const imageUrl = await uploadImage(fileInput.files[0]);
+				$editForm.imageUrl = imageUrl;
+			} catch (error) {
+				console.error('Error uploading image:', error);
+			}
+		}
+	}
+
 	function handleCreateFileChange(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > 0) {
-			createImageFile = input.files[0];
-			createImagePreview = URL.createObjectURL(createImageFile);
+			createImagePreview = URL.createObjectURL(input.files[0]);
 		}
 	}
-	
+
 	function handleEditFileChange(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files && input.files.length > 0) {
-			editImageFile = input.files[0];
-			editImagePreview = URL.createObjectURL(editImageFile);
+			editImagePreview = URL.createObjectURL(input.files[0]);
 		}
-	}
-	
-	async function handleCreateSubmit(event: SubmitEvent) {
-		event.preventDefault();
-		
-		if (createImageFile) {
-			try {
-				const imageUrl = await uploadImage(createImageFile);
-				$createForm.imageUrl = imageUrl;
-			} catch (error) {
-				return;
-			}
-		}
-		
-		const form = event.target as HTMLFormElement;
-		form.submit();
-	}
-	
-	async function handleEditSubmit(event: SubmitEvent) {
-		event.preventDefault();
-		
-		if (editImageFile) {
-			try {
-				const imageUrl = await uploadImage(editImageFile);
-				$editForm.imageUrl = imageUrl;
-			} catch (error) {
-				return;
-			}
-		}
-		
-		const form = event.target as HTMLFormElement;
-		form.submit();
 	}
 
 	$effect(() => {
-		if ($createMessage?.type === 'success') {
+		if ((createMessage as unknown as SuperformsMessage)?.type === 'success') {
 			isCreateDialogOpen = false;
 			resetCreate();
-			createImageFile = null;
 			createImagePreview = null;
-			if (createFileInput) createFileInput.value = '';
 		}
 	});
 
 	$effect(() => {
-		if ($editMessage?.type === 'success') {
+		if ((editMessage as unknown as SuperformsMessage)?.type === 'success') {
 			isEditDialogOpen = false;
 			resetEdit();
-			editImageFile = null;
 			editImagePreview = null;
-			if (editFileInput) editFileInput.value = '';
 		}
 	});
 
 	$effect(() => {
-		if ($deleteMessage?.type === 'success') {
+		if ((deleteMessage as unknown as SuperformsMessage)?.type === 'success') {
 			isDeleteDialogOpen = false;
+			resetDelete();
 		}
 	});
 </script>
@@ -243,7 +228,13 @@
 		<Dialog.Header>
 			<Dialog.Title>Add Shop Item</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/create" use:createEnhance onsubmit={handleCreateSubmit} class="space-y-4">
+		<form
+			method="POST"
+			action="?/create"
+			use:createEnhance
+			onsubmit={handleCreateImageUpload}
+			class="space-y-4"
+		>
 			<div class="space-y-2">
 				<Label for="name">Name</Label>
 				<Input
@@ -283,7 +274,6 @@
 							name="imageFile"
 							type="file"
 							accept="image/*"
-							bind:this={createFileInput}
 							onchange={handleCreateFileChange}
 						/>
 						{#if isUploading}
@@ -294,11 +284,7 @@
 					</div>
 					{#if createImagePreview}
 						<div class="relative aspect-video w-full overflow-hidden rounded-md">
-							<img
-								src={createImagePreview}
-								alt="Preview"
-								class="h-full w-full object-cover"
-							/>
+							<img src={createImagePreview} alt="Preview" class="h-full w-full object-cover" />
 						</div>
 					{/if}
 					<div class="flex items-center">
@@ -373,7 +359,13 @@
 		<Dialog.Header>
 			<Dialog.Title>Edit Shop Item</Dialog.Title>
 		</Dialog.Header>
-		<form method="POST" action="?/update" use:editEnhance onsubmit={handleEditSubmit} class="space-y-4">
+		<form
+			method="POST"
+			action="?/update"
+			use:editEnhance
+			onsubmit={handleEditImageUpload}
+			class="space-y-4"
+		>
 			<input type="hidden" name="id" bind:value={$editForm.id} />
 			<div class="space-y-2">
 				<Label for="edit-name">Name</Label>
@@ -412,7 +404,6 @@
 							name="imageFile"
 							type="file"
 							accept="image/*"
-							bind:this={editFileInput}
 							onchange={handleEditFileChange}
 						/>
 						{#if isUploading}
@@ -423,11 +414,7 @@
 					</div>
 					{#if editImagePreview}
 						<div class="relative aspect-video w-full overflow-hidden rounded-md">
-							<img
-								src={editImagePreview}
-								alt="Preview"
-								class="h-full w-full object-cover"
-							/>
+							<img src={editImagePreview} alt="Preview" class="h-full w-full object-cover" />
 						</div>
 					{/if}
 					<div class="flex items-center">

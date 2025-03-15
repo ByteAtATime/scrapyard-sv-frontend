@@ -9,17 +9,17 @@
 		CardTitle
 	} from '$lib/components/ui/card';
 	import {
-		Table,
-		TableBody,
-		TableCell,
-		TableHead,
-		TableHeader,
-		TableRow
-	} from '$lib/components/ui/table';
-	import { ArrowLeft, Clock, Award, FileText, Check, X } from 'lucide-svelte';
+		Dialog,
+		DialogContent,
+		DialogFooter,
+		DialogHeader,
+		DialogTitle
+	} from '$lib/components/ui/dialog';
+	import { ArrowLeft, Clock, Award, FileText, ExternalLink } from 'lucide-svelte';
 	import { formatDate } from '$lib/utils/date';
 	import { CONFIG } from '$lib/config';
 	import { Badge } from '$lib/components/ui/badge';
+	import AttachmentPreview from '$lib/components/AttachmentPreview.svelte';
 
 	type QuestSubmission = {
 		id: number;
@@ -85,9 +85,13 @@
 		try {
 			return JSON.parse(urlsString);
 		} catch (e) {
+			console.error(e);
 			return [];
 		}
 	}
+
+	// State for attachment preview
+	let previewAttachment = $state<string | null>(null);
 </script>
 
 <div class="container mx-auto space-y-6 p-4">
@@ -129,10 +133,10 @@
 			</CardContent>
 			<CardFooter>
 				<div class="flex w-full justify-between">
-					<Button variant="outline" href="/organizer/quests/{data.quest.id}/edit">
+					<Button variant="outline" href={`/organizer/quests/${data.quest.id}/edit`}>
 						Edit Quest
 					</Button>
-					<Button variant="outline" href="/organizer/quests/{data.quest.id}/submissions">
+					<Button variant="outline" href={`/organizer/quests/${data.quest.id}/submissions`}>
 						View All Submissions
 					</Button>
 				</div>
@@ -166,17 +170,16 @@
 								</div>
 								<div class="mt-2">
 									<p class="text-sm font-medium">Attachments:</p>
-									<div class="mt-1 flex flex-wrap gap-2">
-										{#each parseAttachmentUrls(submission.attachmentUrls) as url, i}
-											<a
-												href={url}
-												target="_blank"
-												rel="noopener noreferrer"
-												class="inline-flex items-center rounded-md bg-secondary px-2 py-1 text-xs"
+									<div class="mt-2 grid grid-cols-3 gap-2">
+										{#each parseAttachmentUrls(submission.attachmentUrls) as url}
+											<button
+												type="button"
+												class="h-20 w-full cursor-pointer overflow-hidden rounded-md border p-0"
+												onclick={() => (previewAttachment = url)}
+												aria-label="Preview attachment"
 											>
-												<FileText class="mr-1 h-3 w-3" />
-												Attachment {i + 1}
-											</a>
+												<AttachmentPreview {url} class="h-full w-full" />
+											</button>
 										{/each}
 									</div>
 								</div>
@@ -184,7 +187,7 @@
 									<Button
 										variant="outline"
 										size="sm"
-										href="/organizer/quests/{data.quest.id}/submissions/{submission.id}"
+										href={`/organizer/quests/${data.quest.id}/submissions`}
 									>
 										Review
 									</Button>
@@ -193,7 +196,7 @@
 						{/each}
 						{#if data.submissions.length > 5}
 							<div class="text-center">
-								<Button variant="link" href="/organizer/quests/{data.quest.id}/submissions">
+								<Button variant="link" href={`/organizer/quests/${data.quest.id}/submissions`}>
 									View all {data.submissions.length} submissions
 								</Button>
 							</div>
@@ -204,3 +207,29 @@
 		</Card>
 	</div>
 </div>
+
+<!-- Attachment Preview Dialog -->
+{#if previewAttachment}
+	<Dialog open={!!previewAttachment} onOpenChange={() => (previewAttachment = null)}>
+		<DialogContent class="sm:max-h-[80vh] sm:max-w-[800px]">
+			<DialogHeader>
+				<DialogTitle>Attachment Preview</DialogTitle>
+			</DialogHeader>
+			<div class="flex h-full max-h-[60vh] w-full items-center justify-center overflow-auto p-2">
+				<AttachmentPreview url={previewAttachment} class="max-h-full max-w-full" />
+			</div>
+			<DialogFooter>
+				<Button variant="outline" onclick={() => (previewAttachment = null)}>Close</Button>
+				<Button
+					variant="default"
+					onclick={() => {
+						if (previewAttachment) window.open(previewAttachment, '_blank');
+					}}
+				>
+					<ExternalLink class="mr-2 h-4 w-4" />
+					Open in New Tab
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
+{/if}

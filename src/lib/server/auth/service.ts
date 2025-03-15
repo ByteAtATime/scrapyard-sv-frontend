@@ -1,6 +1,6 @@
 import type { UserData } from '../db/types';
 import type { IAuthProvider, IAuthState, IUserRepo } from './types';
-import { NotAuthenticatedError, NotOrganizerError, UserNotFoundError } from './types';
+import { NotAuthenticatedError, UserNotFoundError } from './types';
 import { User } from './user';
 import { clerkClient } from 'clerk-sveltekit/server';
 import type { User as ClerkUser } from '@clerk/backend';
@@ -106,7 +106,7 @@ export class UserService implements IUserService {
 		}
 
 		const isOrganizer = await this.authProvider.isOrganizer();
-		
+
 		// For non-organizers, return limited data
 		if (!isOrganizer) {
 			const users = await db.query.usersTable.findMany({

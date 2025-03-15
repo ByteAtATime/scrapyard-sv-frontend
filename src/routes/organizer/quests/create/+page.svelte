@@ -14,9 +14,12 @@
 		CardHeader,
 		CardTitle
 	} from '$lib/components/ui/card';
+	import { createQuestSchema } from '../schema';
+	import type { SuperValidated } from 'sveltekit-superforms';
+	import type { z } from 'zod';
 
 	type PageData = {
-		form: any;
+		form: SuperValidated<z.infer<typeof createQuestSchema>>;
 	};
 
 	const { data } = $props<{ data: PageData }>();

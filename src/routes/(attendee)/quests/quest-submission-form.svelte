@@ -57,8 +57,8 @@
 	}
 
 	function removeFile(index: number) {
-		previewFiles = previewFiles.filter((_: any, i: number) => i !== index);
-		$form.attachments = ($form.attachments || []).filter((_: any, i: number) => i !== index);
+		previewFiles = previewFiles.filter((_, i) => i !== index);
+		$form.attachments = ($form.attachments || []).filter((_: File, i: number) => i !== index);
 	}
 
 	// Set the quest ID and team ID when the form is mounted
