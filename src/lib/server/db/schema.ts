@@ -158,6 +158,14 @@ export const sessionStatusEnum = pgEnum('session_status', [
 	'cancelled'
 ]);
 
+export const questStatusEnum = pgEnum('quest_status', ['active', 'completed', 'cancelled']);
+
+export const questSubmissionStatusEnum = pgEnum('quest_submission_status', [
+	'pending',
+	'approved',
+	'rejected'
+]);
+
 export const scrapperSessionsTable = pgTable('scrapper_sessions', {
 	id: serial('id').primaryKey(),
 	userId: integer('user_id')
@@ -201,4 +209,34 @@ export const scrapVotesTable = pgTable('scrap_votes', {
 	transactionId: integer('transaction_id').references(() => pointTransactionsTable.id),
 	voterTransactionId: integer('voter_transaction_id').references(() => pointTransactionsTable.id),
 	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export const questsTable = pgTable('quests', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull(),
+	description: text('description').notNull(),
+	totalPoints: integer('total_points').notNull(),
+	endTime: timestamp('end_time').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	status: questStatusEnum('status').default('active').notNull()
+});
+
+export const questSubmissionsTable = pgTable('quest_submissions', {
+	id: serial('id').primaryKey(),
+	questId: integer('quest_id')
+		.references(() => questsTable.id)
+		.notNull(),
+	teamId: integer('team_id')
+		.references(() => teamsTable.id)
+		.notNull(),
+	submittedBy: integer('submitted_by')
+		.references(() => usersTable.id)
+		.notNull(),
+	submittedAt: timestamp('submitted_at').defaultNow().notNull(),
+	attachmentUrls: text('attachment_urls').notNull(),
+	status: questSubmissionStatusEnum('status').default('pending').notNull(),
+	reviewerId: integer('reviewer_id').references(() => usersTable.id),
+	reviewedAt: timestamp('reviewed_at'),
+	rejectionReason: text('rejection_reason'),
+	pointsTransactionId: integer('points_transaction_id').references(() => pointTransactionsTable.id)
 });

@@ -8,7 +8,9 @@ import {
 	teamsTable,
 	teamMembersTable,
 	scrapsTable,
-	scrapperSessionsTable
+	scrapperSessionsTable,
+	questsTable,
+	questSubmissionsTable
 } from './schema';
 import type { z } from 'zod';
 
@@ -63,3 +65,11 @@ export const insertSessionSchema = createInsertSchema(scrapperSessionsTable);
 export type SessionData = z.infer<typeof selectSessionSchema> & {
 	totalPausedSeconds?: number;
 };
+
+export const selectQuestSchema = createSelectSchema(questsTable);
+export const insertQuestSchema = createInsertSchema(questsTable);
+export type QuestData = z.infer<typeof selectQuestSchema>;
+
+export const selectQuestSubmissionSchema = createSelectSchema(questSubmissionsTable);
+export const insertQuestSubmissionSchema = createInsertSchema(questSubmissionsTable);
+export type QuestSubmissionData = z.infer<typeof selectQuestSubmissionSchema>;

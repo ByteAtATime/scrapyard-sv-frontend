@@ -87,3 +87,8 @@ export interface ITeamsService {
 	rejectTeamInvitation(invitationId: number): Promise<TeamInvitationData>;
 	cancelTeamInvitation(invitationId: number): Promise<TeamInvitationData>;
 }
+
+export interface ITeamService {
+	isUserInTeam(userId: number, teamId: number): Promise<boolean>;
+	teamExists(teamId: number): Promise<boolean>;
+}
