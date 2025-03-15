@@ -90,7 +90,7 @@
 		isReviewing = true;
 
 		try {
-			const response = await fetch(`/api/v1/quests/submissions/${selectedSubmission.id}`, {
+			const response = await fetch(`/api/v1/quests/submissions/review/${selectedSubmission.id}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json'

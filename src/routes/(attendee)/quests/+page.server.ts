@@ -11,7 +11,7 @@ import {
 	type WithQuestService
 } from '$lib/server/endpoints/dependencies';
 import { fail } from 'sveltekit-superforms';
-import { superValidate } from 'sveltekit-superforms/server';
+import { superValidate, withFiles } from 'sveltekit-superforms/server';
 import { questSubmissionSchema } from './schema';
 import { zod } from 'sveltekit-superforms/adapters';
 
@@ -24,15 +24,33 @@ const submitQuestHandler: PageHandler<
 	}
 
 	try {
-		// Submit the quest with the YouTube URL
+		// Upload files to CDN
+		const uploadPromises = form.data.attachments.map(async (file: File) => {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const response = await fetch('https://hack.ngo/upload', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) throw new Error('Failed to upload file');
+			const data = await response.json();
+			if (!data.success) throw new Error('Failed to upload file');
+			return data.url; // Return just the URL from the CDN response
+		});
+
+		const attachmentUrls = await Promise.all(uploadPromises);
+
+		// Submit the quest
 		const submission = await questService.createQuestSubmission({
 			questId: form.data.questId,
 			teamId: form.data.teamId,
-			attachmentUrls: [form.data.youtubeUrl], // Use the YouTube URL as the attachment
+			attachmentUrls,
 			submittedBy: userId
 		});
 
-		return { success: true, data: submission, form };
+		return withFiles({ success: true, data: submission, form });
 	} catch (error) {
 		console.error(error);
 		return fail(400, {
