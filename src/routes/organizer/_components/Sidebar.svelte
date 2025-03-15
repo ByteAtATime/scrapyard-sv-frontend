@@ -10,7 +10,8 @@
 		ShoppingBag,
 		Code,
 		Vote,
-		Video
+		Video,
+		Trophy
 	} from 'lucide-svelte';
 	import { CONFIG } from '$lib/config';
 
@@ -24,6 +25,11 @@
 			title: 'Events',
 			url: '/organizer/events',
 			icon: Calendar
+		},
+		{
+			title: 'Quests',
+			url: '/organizer/quests',
+			icon: Trophy
 		},
 		{
 			title: `${CONFIG.points.awardVerb} ${CONFIG.points.Plural}`,
