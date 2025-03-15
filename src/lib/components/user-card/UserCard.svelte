@@ -42,13 +42,17 @@
 
 				{#if !compact}
 					<div class="mt-2 flex flex-wrap gap-2 text-xs">
-						<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
-							ID: {user.id}
-						</span>
+						{#if user.id}
+							<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
+								ID: {user.id}
+							</span>
+						{/if}
+						{#if user.totalPoints}
 						<span class="rounded-md bg-primary/10 px-2 py-0.5 text-primary">
 							{user.totalPoints}
 							{CONFIG.points.plural}
-						</span>
+							</span>
+						{/if}
 						{#if user.isOrganizer}
 							<span class="rounded-md bg-blue-500/10 px-2 py-0.5 text-blue-500"> Organizer </span>
 						{/if}

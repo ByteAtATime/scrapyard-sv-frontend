@@ -100,15 +100,30 @@ export class UserService implements IUserService {
 	}
 
 	async getAllUsers(includePoints = false): Promise<UserData[]> {
-		if (!(await this.authProvider.isOrganizer())) {
-			throw new NotOrganizerError();
-		}
-
 		const authorId = await this.authProvider.getUserId();
 		if (!authorId) {
 			throw new NotAuthenticatedError();
 		}
 
+		const isOrganizer = await this.authProvider.isOrganizer();
+		
+		// For non-organizers, return limited data
+		if (!isOrganizer) {
+			const users = await db.query.usersTable.findMany({
+				columns: {
+					id: true,
+					name: true,
+					email: true,
+					authProvider: true,
+					authProviderId: true,
+					isOrganizer: true,
+					avatarUrl: true
+				}
+			});
+			return users;
+		}
+
+		// For organizers, return full data
 		const users = await db.query.usersTable.findMany();
 
 		if (includePoints) {
