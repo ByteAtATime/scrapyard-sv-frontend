@@ -24,7 +24,7 @@ import type {
 	UserVotingActivity
 } from './types';
 
-const DEFAULT_POINTS_PER_HOUR = 100;
+const DEFAULT_POINTS_PER_HOUR = 10;
 
 export class PostgresScrapperRepo implements IScrapperRepo {
 	private convertToSessionData(
