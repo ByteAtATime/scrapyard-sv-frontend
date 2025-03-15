@@ -59,7 +59,7 @@
 	}
 </script>
 
-<div class="space-y-2 max-h-96">
+<div class="space-y-2">
 	{#if selectedUser || isLoading}
 		<div class="flex items-center gap-2">
 			{#if isLoading || !selectedUser}
@@ -95,7 +95,7 @@
 					</Button>
 				{/snippet}
 			</Dialog.Trigger>
-			<Dialog.Content class="sm:max-w-[425px]">
+			<Dialog.Content class="sm:max-w-[425px] max-h-[80vh]">
 				<Dialog.Header>
 					<Dialog.Title>Select User</Dialog.Title>
 				</Dialog.Header>
