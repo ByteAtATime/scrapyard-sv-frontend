@@ -28,10 +28,6 @@ export class ShopService implements IShopService {
 	) {}
 
 	async getAllItems(onlyOrderable: boolean = false): Promise<ShopItem[]> {
-		if (!(await this.authProvider.isOrganizer())) {
-			throw new NotOrganizerError();
-		}
-
 		const authorId = await this.authProvider.getUserId();
 		if (!authorId) {
 			throw new NotAuthenticatedError();
@@ -45,10 +41,6 @@ export class ShopService implements IShopService {
 	}
 
 	async getItemById(id: number): Promise<ShopItem> {
-		if (!(await this.authProvider.isOrganizer())) {
-			throw new NotOrganizerError();
-		}
-
 		const authorId = await this.authProvider.getUserId();
 		if (!authorId) {
 			throw new NotAuthenticatedError();
