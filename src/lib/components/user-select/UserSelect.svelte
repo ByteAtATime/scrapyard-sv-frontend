@@ -59,7 +59,7 @@
 	}
 </script>
 
-<div class="space-y-2">
+<div class="space-y-2 max-h-96">
 	{#if selectedUser || isLoading}
 		<div class="flex items-center gap-2">
 			{#if isLoading || !selectedUser}
