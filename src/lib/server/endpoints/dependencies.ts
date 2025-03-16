@@ -12,7 +12,7 @@ import { UserService } from '../auth/service';
 import { ScrapperService } from '../scrapper/service';
 import { PostgresScrapperRepo } from '../scrapper/postgres';
 import { QuestService, PostgresQuestRepo } from '$lib/server/quests';
-import type { ITeamService } from '$lib/server/teams/types';
+import { PostgresTeamsRepo, TeamsService } from '../teams';
 
 export type WithAuthProvider = { authProvider: IAuthProvider };
 
@@ -102,16 +102,7 @@ export type WithQuestService = { questService: QuestService };
 export const withQuestService = () => {
 	return withDependencies<{ questService: QuestService }>(async ({ authProvider }) => {
 		const pointsService = new PointsService(new PostgresPointsRepo(), authProvider);
-		const teamService: ITeamService = {
-			isUserInTeam: async (_userId: number, _teamId: number) => {
-				// Simplified implementation for now
-				return true;
-			},
-			teamExists: async (_teamId: number) => {
-				// Simplified implementation for now
-				return true;
-			}
-		};
+		const teamService = new TeamsService(new PostgresTeamsRepo());
 
 		return {
 			questService: new QuestService(

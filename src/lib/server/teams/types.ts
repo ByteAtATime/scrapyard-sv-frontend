@@ -79,6 +79,9 @@ export interface ITeamsService {
 	): Promise<TeamMemberData>;
 	getTeamMembers(teamId: number): Promise<TeamMemberData[]>;
 
+	isUserInTeam(userId: number, teamId: number): Promise<boolean>;
+	teamExists(teamId: number): Promise<boolean>;
+
 	inviteToTeam(teamId: number, userId: number, invitedBy: number): Promise<TeamInvitationData>;
 	getTeamInvitationById(invitationId: number): Promise<TeamInvitationData | null>;
 	getTeamInvitationsByUserId(userId: number): Promise<TeamInvitationWithTeamData[]>;
@@ -86,9 +89,4 @@ export interface ITeamsService {
 	acceptTeamInvitation(invitationId: number): Promise<TeamInvitationData>;
 	rejectTeamInvitation(invitationId: number): Promise<TeamInvitationData>;
 	cancelTeamInvitation(invitationId: number): Promise<TeamInvitationData>;
-}
-
-export interface ITeamService {
-	isUserInTeam(userId: number, teamId: number): Promise<boolean>;
-	teamExists(teamId: number): Promise<boolean>;
 }

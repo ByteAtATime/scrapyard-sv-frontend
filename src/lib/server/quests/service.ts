@@ -16,14 +16,14 @@ import type { QuestData, QuestSubmissionData } from '../db/types';
 import type { IAuthProvider } from '$lib/server/auth/types';
 import type { IPointsService } from '../points/types';
 import { NotAuthenticatedError, NotOrganizerError } from '../points/types';
-import type { ITeamService } from '../teams/types';
+import type { ITeamsService } from '../teams/types';
 
 export class QuestService implements IQuestService {
 	constructor(
 		private readonly repository: IQuestRepo,
 		private readonly authProvider: IAuthProvider,
 		private readonly pointsService: IPointsService,
-		private readonly teamService: ITeamService
+		private readonly teamService: ITeamsService
 	) {}
 
 	async createQuest(data: CreateQuestData): Promise<QuestData> {
@@ -160,17 +160,25 @@ export class QuestService implements IQuestService {
 
 		// If approving, award points to the team
 		if (data.status === 'approved') {
-			// Create a transaction to award points
-			const transactionData = {
-				userId: submission.teamId, // Using teamId as userId for team points
-				amount: quest.totalPoints,
-				reason: `Quest completion: ${quest.name}`,
-				authorId: reviewerId,
-				status: 'approved' as const
-			};
+			const team = await this.teamService.getTeamById(submission.teamId);
 
-			const transaction = await this.pointsService.createTransaction(transactionData);
-			pointsTransactionId = transaction.id;
+			if (!team) {
+				throw new TeamNotFoundError(submission.teamId);
+			}
+
+			for (const member of team.members) {
+				// Create a transaction to award points
+				const transactionData = {
+					userId: member.userId,
+					amount: quest.totalPoints,
+					reason: `Quest completion: ${quest.name}`,
+					authorId: reviewerId,
+					status: 'approved' as const
+				};
+
+				const transaction = await this.pointsService.createTransaction(transactionData);
+				pointsTransactionId = transaction.id;
+			}
 		}
 
 		// Update the submission with review data

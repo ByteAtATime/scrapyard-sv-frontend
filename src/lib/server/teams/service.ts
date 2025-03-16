@@ -13,6 +13,19 @@ import { TEAM_CONFIG } from './config';
 export class TeamsService implements ITeamsService {
 	constructor(private readonly repository: ITeamsRepo) {}
 
+	async isUserInTeam(userId: number, teamId: number): Promise<boolean> {
+		const team = await this.getTeamById(teamId);
+		if (!team) {
+			return false;
+		}
+		return team.members.some((member) => member.userId === userId);
+	}
+
+	async teamExists(teamId: number): Promise<boolean> {
+		const team = await this.getTeamById(teamId);
+		return !!team;
+	}
+
 	async createTeam(data: CreateTeamData): Promise<TeamData> {
 		return await this.repository.createTeam(data);
 	}
