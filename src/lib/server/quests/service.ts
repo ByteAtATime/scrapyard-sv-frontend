@@ -160,7 +160,8 @@ export class QuestService implements IQuestService {
 
 		// If approving, award points to the team
 		if (data.status === 'approved') {
-			const team = await this.teamService.getTeamById(submission.teamId);
+			const teams = await this.teamService.getTeamsByUserId(submission.submittedBy);
+			const team = await this.teamService.getTeamById(teams[0].id);
 
 			if (!team) {
 				throw new TeamNotFoundError(submission.teamId);
