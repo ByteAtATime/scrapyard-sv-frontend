@@ -24,23 +24,34 @@ const submitQuestHandler: PageHandler<
 	}
 
 	try {
-		// Upload files to CDN
-		const uploadPromises = form.data.attachments.map(async (file: File) => {
-			const formData = new FormData();
-			formData.append('file', file);
+		let attachmentUrls: string[] = [];
 
-			const response = await fetch('https://hack.ngo/upload', {
-				method: 'POST',
-				body: formData
+		// Process YouTube URL if provided
+		if (form.data.youtubeUrl) {
+			attachmentUrls.push(form.data.youtubeUrl);
+		}
+
+		// Process file uploads if provided
+		if (form.data.attachments && form.data.attachments.length > 0) {
+			// Upload files to CDN
+			const uploadPromises = form.data.attachments.map(async (file: File) => {
+				const formData = new FormData();
+				formData.append('file', file);
+
+				const response = await fetch('https://hack.ngo/upload', {
+					method: 'POST',
+					body: formData
+				});
+
+				if (!response.ok) throw new Error('Failed to upload file');
+				const data = await response.json();
+				if (!data.success) throw new Error('Failed to upload file');
+				return data.url; // Return just the URL from the CDN response
 			});
 
-			if (!response.ok) throw new Error('Failed to upload file');
-			const data = await response.json();
-			if (!data.success) throw new Error('Failed to upload file');
-			return data.url; // Return just the URL from the CDN response
-		});
-
-		const attachmentUrls = await Promise.all(uploadPromises);
+			const fileUrls = await Promise.all(uploadPromises);
+			attachmentUrls = [...attachmentUrls, ...fileUrls];
+		}
 
 		// Submit the quest
 		const submission = await questService.createQuestSubmission({

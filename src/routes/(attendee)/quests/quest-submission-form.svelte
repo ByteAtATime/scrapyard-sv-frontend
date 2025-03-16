@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
+	import { Input } from '$lib/components/ui/input';
 	import { superForm, type SuperValidated } from 'sveltekit-superforms/client';
 	import { toast } from 'svelte-sonner';
-	import { Loader2, FilePlus, X } from 'lucide-svelte';
+	import { Loader2, FilePlus, X, Youtube } from 'lucide-svelte';
 	import type { QuestData } from '$lib/server/db/types';
 	import type { z } from 'zod';
 	import type { questSubmissionSchema } from './schema';
@@ -21,7 +22,8 @@
 				// Reset the form
 				form.update(($form) => ({
 					...$form,
-					attachments: []
+					attachments: [],
+					youtubeUrl: ''
 				}));
 				// Reset preview files
 				previewFiles = [];
@@ -113,6 +115,28 @@
 		{#if $errors.attachments}
 			<p class="text-sm text-destructive">{$errors.attachments}</p>
 		{/if}
+	</div>
+
+	<div class="space-y-2">
+		<Label for="youtubeUrl">YouTube Video URL</Label>
+		<div class="flex items-center gap-2">
+			<Youtube class="h-5 w-5 text-red-600" />
+			<Input
+				id="youtubeUrl"
+				name="youtubeUrl"
+				type="url"
+				placeholder="https://www.youtube.com/watch?v=..."
+				bind:value={$form.youtubeUrl}
+				disabled={$submitting}
+			/>
+		</div>
+		{#if $errors.youtubeUrl}
+			<p class="text-sm text-destructive">{$errors.youtubeUrl}</p>
+		{/if}
+		<p class="text-xs text-muted-foreground">
+			Paste a link to your YouTube video. Supported formats: youtube.com/watch, youtu.be/,
+			youtube.com/shorts
+		</p>
 	</div>
 
 	<Button type="submit" disabled={$submitting} class="w-full">
